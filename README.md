@@ -423,6 +423,10 @@ rather than being dressed up as a transport failure.
 PHP 8.3, 8.4 and 8.5. CI runs the floor with `--prefer-lowest`, the floor with current
 dependencies, and the ceiling; PHPStan runs at level 10 across the whole PHP range.
 
+This package wraps specification version 0.40.0. BinaryLane describes the specification as in
+active development, and states that breaking changes are possible without the API version
+changing. The `X-Spec-Version` response header reports which version answered.
+
 ## Licence
 
 MIT. See [LICENSE.md](LICENSE.md).
