@@ -35,7 +35,15 @@ it covers.
 
 * **Every `ServerActions` method returns `?Action`.** The specification declares a bodiless
   `202` alongside the `200` on every one of them, so null means "accepted, nothing to follow".
-  Whether the API actually uses the 202 is unconfirmed; the harness exercise answers it.
+  One action measured against the live API answered `200` with the action, so the nullable
+  return is defensive rather than routine — but it is declared on all 42 and stays.
+* **`Action` reads an undocumented `error_message`.** The specification declares it on `Image`
+  and not on `Action`, and the API returns it on an action anyway. It is the only field that
+  could explain a failure: `reason` narrates what was being attempted and reads identically
+  whether the action worked or not. `Action::failureReason()` and `ActionFailedException`
+  prefer it and say plainly when there is nothing to say.
+* **`result_data` on an errored action is an empty string, not null** — so `=== null` is not
+  the test for "no answer". `Action::hasResult()` is.
 * **A 401 carries no body**, measured against the live API on 12 September 2026 —
   `content-length: 0`, byte-identical for a bad token and for no token. `NotAuthenticatedException`
   writes its own message because there is nothing to quote.
@@ -51,22 +59,34 @@ it covers.
 * **Pagination follows the API's `next` link** rather than incrementing a page number, and
   refuses a link that does not point at the configured API. A link out of a response body is
   requested with the account's bearer token attached.
-* **DNS record TTLs cannot be chosen.** 3600 is the only supported value, so none is sent.
-* **DNS names use `@` for the apex**, not an empty string. An empty name is converted.
+* **DNS record TTLs cannot be chosen, and a different one is IGNORED rather than refused.**
+  Measured: a record created with no TTL came back 3600, and a subsequent update setting 300
+  was accepted with no error and left the record on 3600. A silent no-op is the reason the
+  package does not offer the field at all.
+* **DNS names use `@` for the apex**, not an empty string — measured on a real zone. An empty
+  name is converted rather than sent.
 * **The DNS record update is a PUT that retains what it is not given**, with empty string
-  clearing and null keeping — the opposite of the create. `DomainRecords::update()` takes an
-  array so that distinction is expressible.
+  clearing and null keeping — the opposite of the create. Measured: a record updated with only
+  `data` kept its name. `DomainRecords::update()` takes an array so that distinction is
+  expressible.
+* **The `?type=` and `?name=` filters on the record list are honoured** — measured, which
+  matters because `DomainRecords::upsert()` decides whether to create or replace on the
+  strength of a filtered list.
+* **The `?image=` filter on the size list restricts which SIZES come back**, dropping the ones
+  that image cannot be installed on: 21 sizes became 13 for a SQL Server edition and 17 for
+  Windows Server 2025. So the raw catalogue is the wrong thing to build a create form from.
 
 ### Known unknowns
 
-These are claims taken from the specification's prose that nothing has yet confirmed against
-the live API. Each has a harness exercise pointed at it.
+What a single account and a single run could not settle. Each has a harness exercise pointed at
+it, so re-running on a different account may answer them.
 
-* Whether a server action ever answers `202` in practice, and for which actions.
-* Whether `result_data` carries the answer to a question-shaped action, and in what form.
-* Whether `?image=` on the size list really narrows the region lists, and whether `?type=` and
-  `?name=` on the record list really filter. `DomainRecords::upsert()` depends on the second.
-* Whether a DNS record TTL other than 3600 is refused or silently replaced.
+* Whether any server action answers `202` in practice. The one measured answered `200`.
+* What `result_data` carries for a question-shaped action that SUCCEEDS. The one measured
+  errored, and reported an empty string.
+* Whether a size kept by the `?image=` filter ever has its region list narrowed. The filter is
+  honoured — it drops sizes the image cannot be installed on — but no narrowing was observable
+  on an account where every distribution is offered in every region.
 * Whether the granularity rules on memory, disk and transfer — documented for the resize
   request — also govern a create. `SizeOptions::validateGranularity()` is opt-in for that
   reason: it is called by `validateAgainst()` and not by the setters.

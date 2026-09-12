@@ -5,22 +5,27 @@
  * Read-only - nothing here can change anything.
  *
  * THE QUESTION THIS EXISTS FOR is the one a test suite structurally cannot answer. This
- * package tells callers that `GET /v2/sizes?image=<slug>` narrows each size's `regions` to
- * where that image is available on that size, and that without it the region lists are wider
- * than the truth. Both halves are read off the specification's prose. If BinaryLane stopped
- * honouring the parameter tomorrow the response would still be a 200 full of sizes, every
- * mock in the suite would still pass, and the advice in Endpoint\Sizes would quietly become
- * wrong - which is the shape of failure that only a real call can see.
+ * package tells callers to build a create form from `GET /v2/sizes?image=<slug>` rather than
+ * from the raw catalogue. If BinaryLane stopped honouring the parameter tomorrow the response
+ * would still be a 200 full of sizes, every mock in the suite would still pass, and the advice
+ * in Endpoint\Sizes would quietly become wrong - which is the shape of failure only a real
+ * call can see.
  *
- * So it asks twice and compares. Each request fetches its own baseline rather than reusing a
- * count printed earlier: when the two agree on the total, that agreement is itself the check
- * that both looked at the same catalogue.
+ * IT COMPARES THE SET OF SIZES, NOT JUST THE REGIONS, and that is a correction. An earlier
+ * version of this probe compared the union of every size's regions and reported "identical",
+ * which it will be on any account where every image is offered in every region - and the real
+ * effect was going on in a place it was not looking. Measured on 12 September 2026, filtering
+ * on `windows-2025` dropped four of twenty-one sizes and changed no region list at all.
  *
- * The interesting outcome is NOT an error. It is the two region lists coming back identical,
- * which means the filter is being ignored and nothing says so.
+ * So it asks twice and compares both. Each request fetches its own baseline rather than
+ * reusing a count printed earlier: when the two agree on the unfiltered total, that agreement
+ * is itself the check that both looked at the same catalogue.
  *
- * Needs BINARYLANE_API_TOKEN. Uses BINARYLANE_IMAGE when set, and otherwise picks the first
- * distribution the account can see.
+ * The interesting outcome is NOT an error. It is BOTH comparisons coming back identical for a
+ * demanding image, which means the filter is being ignored and nothing says so.
+ *
+ * Needs BINARYLANE_API_TOKEN. Uses BINARYLANE_IMAGE when set; otherwise it looks for the image
+ * with the largest minimum disk, because a demanding one is what makes the filter show itself.
  *
  * @var Hampel\Rig\Io $io
  */
@@ -104,63 +109,85 @@ try {
     // ------------------------------------------------------------------------------------
 
     $io->line();
-    $io->info('probe: does ?image= actually narrow the region lists?');
+    $io->info('probe: does ?image= actually restrict the catalogue?');
 
     $slug = getenv('BINARYLANE_IMAGE') ?: null;
 
     if ($slug === null) {
-        foreach ($binarylane->images()->each(type: \Hampel\BinaryLane\Api\Enum\ImageQueryType::Distribution) as $image) {
-            if ($image->slug !== null && $image->slug !== '') {
-                $slug = $image->slug;
+        // The most demanding image available, because an undemanding one fits every size and
+        // a filter that removes nothing cannot be told from a filter that is ignored.
+        $demanding = null;
 
-                break;
+        foreach ($binarylane->images()->each(type: \Hampel\BinaryLane\Api\Enum\ImageQueryType::Distribution) as $image) {
+            if ($image->slug === null || $image->slug === '') {
+                continue;
+            }
+
+            if ($demanding === null || $image->minDiskSize > $demanding->minDiskSize) {
+                $demanding = $image;
             }
         }
+
+        $slug = $demanding?->slug;
     }
 
     if ($slug === null) {
         $io->warn('no distribution image with a slug was visible, so the probe cannot run');
     } else {
-        // Both sides fetch their own list. The unfiltered count is not reused from above:
-        // if the two disagree on how many sizes exist, the comparison below was never
-        // comparing the same thing and the numbers say so.
-        $unfiltered = $binarylane->sizes()->all();
-        $filtered = $binarylane->sizes()->forImage($slug);
-
-        $regionsOf = static function (array $list): array {
-            $all = [];
+        // Both sides fetch their own list. The unfiltered count is not reused from above: if
+        // the two disagree on how many sizes exist in the catalogue, the comparison below was
+        // never comparing the same thing.
+        $index = static function (array $list): array {
+            $out = [];
 
             foreach ($list as $size) {
-                foreach ($size->regions as $region) {
-                    $all[$region] = true;
-                }
+                $regions = $size->regions;
+                sort($regions);
+                $out[$size->slug] = $regions;
             }
 
-            ksort($all);
+            ksort($out);
 
-            return array_keys($all);
+            return $out;
         };
 
-        $before = $regionsOf($unfiltered);
-        $after = $regionsOf($filtered);
+        $before = $index($binarylane->sizes()->all());
+        $after = $index($binarylane->sizes()->forImage($slug));
+
+        $dropped = array_diff(array_keys($before), array_keys($after));
+        $narrowed = [];
+
+        foreach ($after as $size => $regions) {
+            if (isset($before[$size]) && $before[$size] !== $regions) {
+                $narrowed[$size] = sprintf('%s -> %s', implode(',', $before[$size]), implode(',', $regions) ?: '(none)');
+            }
+        }
 
         $io->values([
             'image' => $slug,
-            'sizes unfiltered' => count($unfiltered),
-            'sizes filtered' => count($filtered),
-            'regions unfiltered' => implode(', ', $before) ?: '(none)',
-            'regions filtered' => implode(', ', $after) ?: '(none)',
+            'sizes unfiltered' => count($before),
+            'sizes filtered' => count($after),
+            'sizes dropped' => $dropped === [] ? 'none' : implode(', ', $dropped),
+            'region lists narrowed' => count($narrowed),
         ]);
+
+        foreach (array_slice($narrowed, 0, 6, true) as $size => $change) {
+            $io->line(sprintf('    %s: %s', $size, $change));
+        }
 
         $io->line();
 
-        if ($before === $after && count($unfiltered) === count($filtered)) {
-            $io->warn('IDENTICAL on both counts. Either this image really is available everywhere');
-            $io->warn('this catalogue reaches - which is plausible for a common distribution - or');
-            $io->warn('the filter is being ignored. Re-run with BINARYLANE_IMAGE set to something');
-            $io->warn('scarcer before believing the first reading.');
+        if ($dropped === [] && $narrowed === []) {
+            $io->warn('NOTHING CHANGED on either comparison. Either this image really fits every');
+            $io->warn('size in every region - which is true of an undemanding distribution - or the');
+            $io->warn('filter is being ignored. Re-run with BINARYLANE_IMAGE set to the most');
+            $io->warn('demanding image on the account before believing the first reading.');
         } else {
-            $io->success('the filter changed the answer, so it is being honoured');
+            $io->success(sprintf(
+                'the filter is honoured: %d size(s) dropped, %d region list(s) narrowed',
+                count($dropped),
+                count($narrowed)
+            ));
         }
     }
 

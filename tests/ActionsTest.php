@@ -206,9 +206,16 @@ final class ActionsTest extends TestCase
         $this->assertSame('/v2/actions/7', $this->sentPath());
     }
 
+    /**
+     * `error_message` is not in the specification's Action schema and the live API returns it
+     * anyway, so it is read - and it is the only field that carries an explanation.
+     */
     public function testAwaitRaisesWhenTheActionErrored(): void
     {
-        $this->client->pushJson(200, $this->action(7, 'errored', ['reason' => 'The image is not licensed for this account.']));
+        $this->client->pushJson(200, $this->action(7, 'errored', [
+            'reason' => 'Your server is being rebuilt',
+            'error_message' => 'The image is not licensed for this account.',
+        ]));
 
         try {
             $this->binarylane()->actions()->await(7);
@@ -216,8 +223,52 @@ final class ActionsTest extends TestCase
             $this->fail('expected an ActionFailedException');
         } catch (ActionFailedException $e) {
             $this->assertSame(7, $e->action->id);
+            $this->assertSame('The image is not licensed for this account.', $e->action->errorMessage);
+            $this->assertSame('The image is not licensed for this account.', $e->action->failureReason());
             $this->assertStringContainsString('The image is not licensed for this account.', $e->getMessage());
         }
+    }
+
+    /**
+     * `reason` narrates what was being attempted, in the same words whether the action worked
+     * or not - so quoting it as a cause produces a message that reads like a progress note.
+     * Measured live: an errored uptime action carried "Your server uptime is being checked".
+     */
+    public function testAFailureWithNoErrorMessageDoesNotQuoteTheProgressNoteAsACause(): void
+    {
+        $this->client->pushJson(200, $this->action(7, 'errored', [
+            'type' => 'uptime',
+            'reason' => 'Your server uptime is being checked',
+        ]));
+
+        try {
+            $this->binarylane()->actions()->await(7);
+
+            $this->fail('expected an ActionFailedException');
+        } catch (ActionFailedException $e) {
+            $this->assertNull($e->action->failureReason(), 'there was no explanation to give');
+            $this->assertStringContainsString('gave no reason for it', $e->getMessage());
+            $this->assertStringContainsString('rather than what went wrong', $e->getMessage());
+            $this->assertStringContainsString('Your server uptime is being checked', $e->getMessage());
+        }
+    }
+
+    /**
+     * An errored action reports result_data as an empty string rather than null, so `=== null`
+     * is not the test for "no answer".
+     */
+    public function testAnEmptyResultDataIsNotAResult(): void
+    {
+        $this->client->pushJson(200, $this->action(7, 'completed', ['result_data' => '']));
+
+        $action = $this->binarylane()->actions()->await(7);
+
+        $this->assertSame('', $action->resultData);
+        $this->assertFalse($action->hasResult());
+
+        $this->client->pushJson(200, $this->action(8, 'completed', ['result_data' => '14 days']));
+
+        $this->assertTrue($this->binarylane()->actions()->await(8)->hasResult());
     }
 
     /**

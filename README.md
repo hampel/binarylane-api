@@ -88,6 +88,12 @@ an action stops without completing:
 
 A `while ($action->status !== 'completed')` loop never escapes the middle two.
 
+**Do not read `reason` as an explanation.** It narrates what was being attempted and reads the
+same whether the action worked or not — an errored `uptime` action carries *"Your server uptime
+is being checked"*. `Action::failureReason()` reads `error_message` instead, which the
+specification does not declare on an action and the API returns anyway, and answers null rather
+than something misleading when there is nothing to say.
+
 Some actions can also be answered with `202` and no body at all, in which case there is no
 action to wait on. Every method on `ServerActions` returns `?Action` for that reason, and
 `Servers::actions($id)` is where to look for what a `null` started.
@@ -333,16 +339,17 @@ $binarylane->loadBalancers()->availability();
 $binarylane->regions()->available();
 $binarylane->reverseNames()->all();
 $binarylane->sampleSets()->latest(1234);
-$binarylane->sizes()->forImage('ubuntu-24-04-lts'); // narrows the region lists
+$binarylane->sizes()->forImage('ubuntu-24-04-lts'); // only the sizes it can install on
 $binarylane->software()->availableFor('ubuntu-24-04-lts');
 $binarylane->sshKeys()->defaults();                 // deployed to every new server
 $binarylane->vpcs()->serverIds(3);
 ```
 
 Two of those repay a second look. `sizes()->list()` is the raw catalogue and the wrong thing to
-build a create form from — without `?image=`, each size's region list is wider than the truth.
-And data transfer allowance is pooled across the account, so a single server over its own
-number may be fine; the total is the comparison that means something.
+build a create form from: it contains sizes your image cannot be installed on at all. Filtering
+on a SQL Server edition took a 21-size catalogue down to 13. And data transfer allowance is
+pooled across the account, so a single server over its own number may be fine; the total is the
+comparison that means something.
 
 ## Extending it
 

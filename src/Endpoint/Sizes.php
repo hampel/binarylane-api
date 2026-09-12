@@ -18,13 +18,22 @@ use Hampel\BinaryLane\Api\Result\Page;
  *  - `server_id` narrows the list to sizes that server could be RESIZED to, which is a
  *    smaller set than the catalogue and is the only correct list to offer for a resize. The
  *    specification notes it needs authentication, which every request here has.
- *  - `image` narrows each size's `regions` to where that operating system is available ON
- *    that size. WITHOUT IT, THE REGION LISTS ARE WIDER THAN THE TRUTH - a region taken from an
- *    unfiltered list is not a promise that the image you want can be installed there.
+ *  - `image` RESTRICTS THE CATALOGUE TO SIZES THAT OPERATING SYSTEM CAN ACTUALLY BE INSTALLED
+ *    ON. Measured on 12 September 2026: an unfiltered list of 21 sizes came back as 17 for
+ *    `windows-2025` and 13 for `windows-2022-sql-2019-std`, the dropped ones being the storage
+ *    and dedicated plans those images do not fit. An undemanding image dropped none.
+ *
+ *    The specification describes this as narrowing each size's `regions` to "only valid
+ *    regions for the size and operating system". The two readings reconcile: a size left with
+ *    no valid region is omitted altogether rather than returned with an empty region list.
+ *    Region lists on the sizes that SURVIVE were unchanged in every case measured - though
+ *    every distribution on that account was offered in all six regions, so there was no size
+ *    that should have been kept and narrowed. Expect either.
  *
  * So `forImage()` is the call to build a create form from, and `forResize()` the one to build
  * a resize form from. `list()` is the raw catalogue, which is the right answer to "what does
- * BinaryLane sell" and the wrong one to "what can I create".
+ * BinaryLane sell" and the wrong one to "what can I create" - it contains sizes the image you
+ * have in mind cannot be installed on at all.
  */
 final class Sizes extends Endpoint
 {
@@ -34,8 +43,8 @@ final class Sizes extends Endpoint
      * One page of the catalogue.
      *
      * @param  int|null  $serverId  restrict to sizes this server can be resized to
-     * @param  int|string|null  $image  narrow each size's regions to where this image is
-     *                                  available on it
+     * @param  int|string|null  $image  restrict to sizes this image can be installed on, and
+     *                                  narrow their regions to where it is available
      * @return Page<Size>
      */
     public function list(
@@ -103,10 +112,11 @@ final class Sizes extends Endpoint
     }
 
     /**
-     * The sizes available for an image, with region lists narrowed to where that image
-     * actually runs.
+     * The sizes an image can actually be installed on.
      *
-     * The list to build a create form from - see the class note.
+     * THE LIST TO BUILD A CREATE FORM FROM. The unfiltered catalogue contains sizes that will
+     * refuse the image outright - eight of twenty-one for a SQL Server edition, measured - and
+     * a size taken from it is not a promise. See the class note.
      *
      * @return list<Size>
      */

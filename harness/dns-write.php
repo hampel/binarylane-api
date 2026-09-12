@@ -156,7 +156,31 @@ try {
     }
 
     $io->line();
-    $io->info('4. is the apex written as "@"?');
+    $io->info('4. is the ?type= filter honoured? Only answerable while this record exists.');
+
+    // Both zones on the account hold nothing but A records, so a type filter cannot be told
+    // from no filter by reading alone - asking for type=A returns everything either way. The
+    // probe record above is a TXT, so for as long as it is there the zone has two types and
+    // the question has an answer. This is the only moment it does.
+    $txt = $records->all(type: DomainRecordType::TXT);
+    $everything = $records->all();
+
+    $io->values([
+        'records in the zone' => count($everything),
+        'records of type TXT' => count($txt),
+    ]);
+
+    if (count($everything) === count($txt)) {
+        $io->error('IGNORED - asking for TXT returned every record in the zone.');
+        $io->error('DomainRecords::upsert() cannot be trusted against this API until that is understood.');
+    } elseif (count($txt) >= 1) {
+        $io->success('the type filter is honoured');
+    } else {
+        $io->warn('the filter returned nothing at all, including the record just created');
+    }
+
+    $io->line();
+    $io->info('5. is the apex written as "@"?');
 
     $apex = $records->all(type: DomainRecordType::NS);
     $apexNames = array_values(array_unique(array_map(

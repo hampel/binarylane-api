@@ -28,6 +28,19 @@ use Hampel\BinaryLane\Api\Support\Cast;
  * `resultData` IS WHERE AN ANSWER COMES BACK when the action was really a question - the
  * uptime action puts the uptime there, `is_running` puts the answer there. It is a string
  * whatever the action, so a caller reading it knows what shape to expect from what it asked.
+ * AN EMPTY STRING IS WHAT AN ERRORED ACTION CARRIES, not null - so `=== null` is not the test
+ * for "no answer".
+ *
+ * `reason` IS NARRATION, NOT AN EXPLANATION, and that is worth knowing before quoting it at
+ * anybody. It reads as progress whatever the status: an errored uptime action was measured on
+ * 12 September 2026 carrying `"Your server uptime is being checked"`, which describes what was
+ * being attempted rather than why it failed. `errorMessage` is the field for that.
+ *
+ * `errorMessage` IS NOT IN THE SPECIFICATION. The published `Action` schema does not declare
+ * it - it is declared on `Image` and nowhere else - and the live API returns it on an action
+ * anyway, null on the one measured. It is read here because it is the only field that could
+ * carry a failure explanation, and because an undocumented field that exists is better read
+ * than ignored.
  */
 final class Action implements \JsonSerializable
 {
@@ -53,6 +66,7 @@ final class Action implements \JsonSerializable
         public readonly ?string $resultData = null,
         public readonly ?int $blockingInvoiceId = null,
         public readonly ?UserInteractionRequired $userInteractionRequired = null,
+        public readonly ?string $errorMessage = null,
         public readonly array $raw = [],
     ) {
     }
@@ -78,6 +92,7 @@ final class Action implements \JsonSerializable
             Cast::string($row['result_data'] ?? null),
             Cast::int($row['blocking_invoice_id'] ?? null),
             Cast::nested($row['user_interaction_required'] ?? null, UserInteractionRequired::fromArray(...)),
+            Cast::string($row['error_message'] ?? null),
             $row,
         );
     }
@@ -141,6 +156,30 @@ final class Action implements \JsonSerializable
     }
 
     /**
+     * The best available account of why this action failed, or null when there is none.
+     *
+     * PREFERS `errorMessage` OVER `reason`, because `reason` narrates what was being attempted
+     * rather than what went wrong - see the class note. Returns null rather than a misleading
+     * sentence when the API offered no explanation, which it does more often than you would
+     * like.
+     */
+    public function failureReason(): ?string
+    {
+        $message = trim($this->errorMessage ?? '');
+
+        return $message === '' ? null : $message;
+    }
+
+    /**
+     * Whether the action carried any answer at all - an empty `result_data` being what an
+     * errored action reports, rather than null.
+     */
+    public function hasResult(): bool
+    {
+        return $this->resultData !== null && trim($this->resultData) !== '';
+    }
+
+    /**
      * How long the action took, or has taken so far.
      *
      * Null when the API did not send a `started_at` that could be parsed. A running action
@@ -198,6 +237,7 @@ final class Action implements \JsonSerializable
             'result_data' => $this->resultData,
             'blocking_invoice_id' => $this->blockingInvoiceId,
             'user_interaction_required' => $this->userInteractionRequired,
+            'error_message' => $this->errorMessage,
         ];
     }
 }

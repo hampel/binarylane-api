@@ -22,7 +22,8 @@
  *      it really does answer 202, callers need to know when.
  *   2. Does `result_data` carry the answer to a question-shaped action, and in what form? It
  *      is typed as a string whatever the action, so "14 days" and "1209600" are both possible
- *      and the package cannot say which.
+ *      and the package cannot say which. Measured once: an ERRORED action reports it as an
+ *      empty string rather than null, which is why `hasResult()` exists.
  *   3. How long does an action of this kind take, and is `progress` populated while it runs?
  *      The polling defaults in Actions were chosen without a measurement.
  *
@@ -144,13 +145,14 @@ try {
     $io->success(sprintf('completed after %.1fs and %d poll(s)', $elapsed, $polls));
 
     $io->values([
-        'result data' => $completed->resultData ?? '(none)',
+        'result data' => $completed->hasResult() ? (string) $completed->resultData : '(none)',
         'started at' => $completed->startedAt?->format(DATE_ATOM) ?? '(not sent)',
         'completed at' => $completed->completedAt?->format(DATE_ATOM) ?? '(not sent)',
-        'reason' => $completed->reason,
+        'reason (narration)' => $completed->reason,
+        'error_message' => $completed->errorMessage ?? '(null)',
     ]);
 
-    if ($completed->resultData === null) {
+    if (!$completed->hasResult()) {
         $io->line();
         $io->warn('no result_data. Either this action does not report one, or the field has moved -');
         $io->warn('the package tells callers that a question-shaped action answers there.');
@@ -162,7 +164,21 @@ try {
         $io->info('exercised. A longer action would be needed to measure it.');
     }
 } catch (ActionFailedException $e) {
-    $io->error('the action failed: ' . $e->action->reason);
+    $io->line();
+    $io->error($e->getMessage());
+
+    $io->values([
+        'status' => $e->action->status?->value ?? '?',
+        'error_message' => $e->action->errorMessage ?? '(null - and it is not in the specification either)',
+        'reason (narration)' => $e->action->reason,
+        'result data' => $e->action->hasResult() ? (string) $e->action->resultData : '(empty)',
+        'completed steps' => implode(', ', $e->action->progress?->completedSteps ?? []) ?: '(none)',
+    ]);
+
+    $io->line();
+    $io->warn('`reason` narrates what was attempted and reads the same whether the action worked');
+    $io->warn('or not, so it is shown as narration rather than as a cause. `error_message` is the');
+    $io->warn('field that could explain, and the specification does not declare it on an action.');
 
     exit(1);
 } catch (ActionBlockedException $e) {

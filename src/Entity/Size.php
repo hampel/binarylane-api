@@ -19,11 +19,11 @@ use Hampel\BinaryLane\Api\Support\Cast;
  *
  * isAvailableIn() is all three together, which is the question actually being asked.
  *
- * `regions` NARROWS WHEN YOU ASK ABOUT AN OPERATING SYSTEM. The specification says so: a
- * size list requested with an image selected lists only the regions where that image is
- * available on that size. Asked without one, the list is wider than what any particular
- * image can actually be installed in - so a region taken from an unfiltered list is not a
- * promise.
+ * THIS SIZE MAY NOT ACCEPT THE IMAGE YOU HAVE IN MIND, and nothing on the object says so. A
+ * size list requested with an image selected omits the sizes that image cannot be installed
+ * on, and narrows the `regions` of those that remain to where it is available; asked without
+ * one, you get the whole catalogue. So a size taken from an unfiltered list is not a promise -
+ * see Endpoint\Sizes::forImage(), which is what a create form should be built from.
  *
  * THE UNITS ARE BINARYLANE'S: memory in MB (1024² bytes), disk in GB (1024³), transfer in TB
  * where a TB is 1000 of those GB. Prices are AU$.
