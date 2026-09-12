@@ -206,6 +206,49 @@ final class ConnectionTest extends TestCase
         }
     }
 
+    /**
+     * The specification declares no response headers at all, and the live API sends one -
+     * which is why ResponseMeta keeps every header rather than naming the ones it expects.
+     */
+    public function testItKeepsAHeaderTheSpecificationDoesNotDocument(): void
+    {
+        $this->client->pushJson(200, ['account' => []], ['X-Spec-Version' => '0.40.0']);
+
+        $meta = $this->connection()->get('account')->meta;
+
+        $this->assertSame('0.40.0', $meta->specVersion());
+        $this->assertSame('0.40.0', $meta->header('x-spec-version'), 'matched case-insensitively');
+        $this->assertArrayHasKey('x-spec-version', $meta->toArray());
+    }
+
+    public function testAnAbsentHeaderIsNullRatherThanEmpty(): void
+    {
+        $this->client->pushJson(200, ['account' => []]);
+
+        $meta = $this->connection()->get('account')->meta;
+
+        $this->assertNull($meta->specVersion());
+        $this->assertNull($meta->header('X-Request-Id'));
+    }
+
+    /**
+     * A path the API does not route answers 404 with no body, despite the specification
+     * declaring ProblemDetails for every 404 it documents.
+     */
+    public function testANotFoundWithNoBodyIsStillANotFound(): void
+    {
+        $this->client->pushRaw(404, '');
+
+        try {
+            $this->connection()->get('no-such-thing');
+
+            $this->fail('expected a NotFoundException');
+        } catch (NotFoundException $e) {
+            $this->assertNull($e->problem);
+            $this->assertSame(404, $e->statusCode);
+        }
+    }
+
     public function testItCapturesARetryAfterHeaderWhenItIsAPlainInteger(): void
     {
         $this->client->pushJson(429, ['title' => 'Too many requests'], ['Retry-After' => '30']);

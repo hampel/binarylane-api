@@ -9,12 +9,16 @@ use Psr\Http\Message\ResponseInterface;
 /**
  * What arrived alongside a response body.
  *
- * BINARYLANE DOCUMENTS NO RESPONSE HEADERS AT ALL. The specification declares not one -
- * there is no rate-limit budget to read, no request id to quote in a support ticket, and no
- * deprecation notice, at least none that is promised. That is the reason this class keeps
- * every header rather than naming three: a client that guessed at names would have nothing
- * to show when the guess was wrong, and an integration that needs to know what actually came
- * back can read it here without a release of this package.
+ * BINARYLANE DOCUMENTS NO RESPONSE HEADERS AT ALL, AND SENDS AT LEAST ONE. The specification
+ * declares not a single header - no rate-limit budget, no request id to quote in a support
+ * ticket, no deprecation notice. The live API nevertheless returns `X-Spec-Version`, measured
+ * on 12 September 2026 as `0.40.0`, matching the `info.version` of the published
+ * specification.
+ *
+ * That gap is the whole reason this class keeps every header rather than naming three. A
+ * client that had guessed at names would have missed the one header that exists, and an
+ * integration that needs to know what actually came back can read it here without waiting for
+ * a release of this package.
  *
  * Keys are lowercased, because HTTP header names are case-insensitive and a caller matching
  * on `X-Request-Id` should not miss `x-request-id`.
@@ -51,6 +55,23 @@ final class ResponseMeta
     public function contentType(): ?string
     {
         return $this->header('Content-Type');
+    }
+
+    /**
+     * `X-Spec-Version` - which version of the API specification answered.
+     *
+     * UNDOCUMENTED, AND THE ONLY WAY TO NOTICE A CHANGE. BinaryLane's own introduction warns
+     * that "breaking changes are possible without the version changing" - by which it means
+     * the API version, `v2`. This header carries the SPECIFICATION version, which does move:
+     * `0.40.0` at the time of writing. Recording it alongside anything surprising is the
+     * cheapest way to find out later whether the API changed underneath you or you were
+     * always wrong.
+     *
+     * Null when the header was not sent, which nothing promises it will be.
+     */
+    public function specVersion(): ?string
+    {
+        return $this->header('X-Spec-Version');
     }
 
     /**
