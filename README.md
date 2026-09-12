@@ -303,6 +303,14 @@ duplicate:
 $records->upsert(DomainRecord::a('www', '203.0.113.10'));
 ```
 
+`domains()->records($zone)` binds the zone for a sequence of calls. `$binarylane->records()` is
+the same endpoint unbound, taking the zone as its first argument — worth reaching for when the
+zone varies per call rather than per block:
+
+```php
+$binarylane->records()->get('example.com', 42);
+```
+
 Adding a zone here does not delegate it. `Domain::$currentNameservers` is what the domain
 **actually** resolves to:
 
