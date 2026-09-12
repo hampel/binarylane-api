@@ -1,8 +1,8 @@
 CHANGELOG
 =========
 
-Unreleased
-----------
+0.1.0 (2026-09-13)
+------------------
 
 First working version. Complete coverage of BinaryLane's v2 API at specification version
 0.40.0: 116 operations, 26 enums, and the entity graph behind them.
