@@ -58,46 +58,43 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
+          # Both tools are dev dependencies that the install below deletes, so both have to
+          # come from outside the package. Taking them from setup-php rather than installing
+          # them into a scratch directory is not only tidier: it puts the binaries outside
+          # every vendor tree, which for PHPStan is load-bearing. Run through a
+          # vendor/bin/phpstan proxy, PHPStan picks up the autoloader sitting beside it, and
+          # every package THAT tree has installed then resolves in the code being analysed -
+          # so the check passes on exactly the class it exists to catch.
+          tools: phpstan, composer-require-checker
 
-      # Two checks here, and they catch different things. This one needs the dev
-      # dependencies PRESENT, so it goes first: composer-require-checker maps every symbol
-      # src/ uses back to the package that provides it, and a package that is not installed
-      # cannot be mapped. It is the only half that sees a TRANSITIVE dependency - one
-      # arriving through something we did declare, which survives --no-dev and so reports
-      # clean below - and the only half that sees a missing ext-*, which is invisible to
-      # static analysis because a function from an absent extension looks exactly like one
-      # from core. ext-ctype was undeclared from 0.1.0 to 0.3.0 for precisely that reason,
-      # with the check below green on every push.
-      - run: composer install --prefer-dist --no-progress
+      # One install serves both checks. --no-dev is what the second one needs; the first is
+      # indifferent to it, because composer-require-checker builds its known-symbol set from
+      # what "require" NAMES rather than from what is installed. That is worth stating
+      # because the opposite is easy to assume: a symbol supplied by a dev dependency is
+      # reported with that dependency sitting right there in vendor/.
+      - run: composer install --no-dev --prefer-dist --no-progress
 
-      # Same shape as the phpstan step below, and the same trap: composer -d does not
-      # create the directory.
-      - run: |
-          mkdir -p /tmp/crc
-          composer -d /tmp/crc require maglnet/composer-require-checker --no-progress
-          /tmp/crc/vendor/bin/composer-require-checker check composer.json
-
-      # Now analyse src/ with the dev dependencies gone, so anything it calls that is not in
+      # Analyse src/ with the dev dependencies gone, so anything it calls that is not in
       # "require" comes back as not-found. A normal PHPStan run has guzzle and phpunit
       # installed and sees nothing wrong, and the package would fatal for the consumer
       # instead. It matters here more than most - the whole point of this package is that it
       # needs four PSR interfaces and nothing else.
-      - run: composer install --no-dev --prefer-dist --no-progress
-
-      # PHPStan is itself a dev dependency, so --no-dev just deleted it. It has to come
-      # from outside the package. composer -d does not create the directory, so mkdir
-      # first or the step dies with "Invalid working directory specified".
-      - run: |
-          mkdir -p /tmp/phpstan
-          composer -d /tmp/phpstan require phpstan/phpstan --no-progress
-
+      #
       # -c is not optional. Without it PHPStan discovers the package's own phpstan.neon,
       # which points at tests/ and can no longer resolve PHPUnit - turning the run into a
       # configuration error while you are trying to read it as a dependency result.
       - run: >
-          /tmp/phpstan/vendor/bin/phpstan analyse
+          phpstan analyse
           -c .github/phpstan-nodev.neon
           --autoload-file=vendor/autoload.php --no-progress
+
+      # The other half, and it catches what the run above cannot. PHPStan sees only what
+      # src/ REACHES, so it is blind to a TRANSITIVE dependency - one arriving through
+      # something we did declare, which survives --no-dev and reports clean. It is also blind
+      # to a missing ext-*, because a function from an absent extension looks exactly like
+      # one from core. ext-filter was undeclared until this check named it, with the run
+      # above green.
+      - run: composer-require-checker check composer.json
 
   lint:
     name: Lint
