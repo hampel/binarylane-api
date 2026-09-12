@@ -10,6 +10,11 @@ use Hampel\BinaryLane\Api\Endpoint\Account;
 use Hampel\BinaryLane\Api\Endpoint\Actions;
 use Hampel\BinaryLane\Api\Endpoint\DomainRecords;
 use Hampel\BinaryLane\Api\Endpoint\Domains;
+use Hampel\BinaryLane\Api\Endpoint\Images;
+use Hampel\BinaryLane\Api\Endpoint\Regions;
+use Hampel\BinaryLane\Api\Endpoint\Sizes;
+use Hampel\BinaryLane\Api\Endpoint\SoftwareCatalogue;
+use Hampel\BinaryLane\Api\Endpoint\SshKeys;
 use Hampel\BinaryLane\Api\Endpoint\Endpoint;
 use Hampel\BinaryLane\Api\Endpoint\ServerActions;
 use Hampel\BinaryLane\Api\Endpoint\Servers;
@@ -242,6 +247,46 @@ final class Client
     public function serverActions(): ServerActions
     {
         return $this->endpoint(ServerActions::class);
+    }
+
+    /**
+     * Images: BinaryLane's operating system catalogue, and this account's own backups.
+     */
+    public function images(): Images
+    {
+        return $this->endpoint(Images::class);
+    }
+
+    /**
+     * SSH keys held on the account, at `/v2/account/keys`.
+     */
+    public function sshKeys(): SshKeys
+    {
+        return $this->endpoint(SshKeys::class);
+    }
+
+    /**
+     * The catalogue of server plans.
+     */
+    public function sizes(): Sizes
+    {
+        return $this->endpoint(Sizes::class);
+    }
+
+    /**
+     * The locations resources can be created in.
+     */
+    public function regions(): Regions
+    {
+        return $this->endpoint(Regions::class);
+    }
+
+    /**
+     * Licensable software - the catalogue, as distinct from what a server has licensed.
+     */
+    public function software(): SoftwareCatalogue
+    {
+        return $this->endpoint(SoftwareCatalogue::class);
     }
 
     /**
