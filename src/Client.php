@@ -8,6 +8,8 @@ use Hampel\BinaryLane\Api\Authentication\ApiToken;
 use Hampel\BinaryLane\Api\Authentication\Authentication;
 use Hampel\BinaryLane\Api\Endpoint\Account;
 use Hampel\BinaryLane\Api\Endpoint\Actions;
+use Hampel\BinaryLane\Api\Endpoint\DomainRecords;
+use Hampel\BinaryLane\Api\Endpoint\Domains;
 use Hampel\BinaryLane\Api\Endpoint\Endpoint;
 use Hampel\BinaryLane\Api\Endpoint\ServerActions;
 use Hampel\BinaryLane\Api\Endpoint\Servers;
@@ -203,6 +205,24 @@ final class Client
     public function actions(): Actions
     {
         return $this->endpoint(Actions::class);
+    }
+
+    /**
+     * DNS zones.
+     *
+     * `domains()->records('example.com')` binds a zone for a sequence of record calls.
+     */
+    public function domains(): Domains
+    {
+        return $this->endpoint(Domains::class);
+    }
+
+    /**
+     * DNS records, with the zone name as the first argument to every call.
+     */
+    public function records(): DomainRecords
+    {
+        return $this->endpoint(DomainRecords::class);
     }
 
     /**
