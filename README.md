@@ -190,12 +190,20 @@ $server->selectedSizeOptions?->memory;        // what THIS server has, in MB
 **`status` does not tell you whether a server is powered on.** A server that was genuinely off
 reported `active`, exactly as its running neighbours did, and nothing else in the payload
 carries a power state. That is why there is no `isRunning()` on `Server` — there was one, and
-it was wrong on precisely the server it mattered for. The API's own design agrees: it provides
-a dedicated action for the question.
+it was wrong on precisely the server it mattered for. Ask the API instead:
 
 ```php
-$action = $binarylane->serverActions()->isRunning(1234);
-$answer = $binarylane->actions()->await($action)->resultData;
+$binarylane->serverActions()->checkRunning(1234);     // bool
+$binarylane->serverActions()->checkUptime(1234);      // "0 days,  0:02", or null
+```
+
+**A question-shaped action answers by completing or erroring, not in its payload.** Measured
+both ways: `is_running` completes with a *null* `result_data` when the server is up and errors
+when it is down. Since `await()` raises on an errored action, asking the obvious way throws
+when the answer is simply "no" — which is what `checkRunning()` and `ask()` exist to avoid.
+
+```php
+$action = $binarylane->serverActions()->ask(1234, 'is_running');   // ?Action; null means "no"
 ```
 
 Read `selectedSizeOptions` rather than `size` for what a server actually has. The size is the

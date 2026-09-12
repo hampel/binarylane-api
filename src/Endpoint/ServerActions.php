@@ -7,6 +7,7 @@ namespace Hampel\BinaryLane\Api\Endpoint;
 use Hampel\BinaryLane\Api\Entity\Action;
 use Hampel\BinaryLane\Api\Entity\AdvancedFirewallRule;
 use Hampel\BinaryLane\Api\Enum\BackupSlot;
+use Hampel\BinaryLane\Api\Exception\ActionFailedException;
 use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
 use Hampel\BinaryLane\Api\Request\AdvancedFeatures;
 use Hampel\BinaryLane\Api\Request\ImageOptions;
@@ -97,14 +98,32 @@ final class ServerActions extends Endpoint
     }
 
     // ----------------------------------------------------------------------------------
-    // Questions - actions whose answer comes back in the completed action's resultData
+    // Questions - actions whose answer is whether they SUCCEED
     // ----------------------------------------------------------------------------------
+    //
+    // THE ANSWER IS THE STATUS, NOT THE PAYLOAD, and that is worth reading twice because it
+    // is the opposite of what the shape suggests. Measured on 13 September 2026, both ways,
+    // against a server that was stopped and then started:
+    //
+    //                     server running                     server stopped
+    //   is_running        completed, result_data NULL        errored
+    //   uptime            completed, result_data "0 days,  0:02"   errored
+    //
+    // So `is_running` never reports anything at all - it answers by completing. And an
+    // errored action is how this API says "no", which collides with Actions::await(), whose
+    // whole job is to raise on one. Asking "is this server up?" through await() therefore
+    // throws when the answer is simply no.
+    //
+    // ask() is the resolution: it performs, waits, and maps an errored action to null instead
+    // of raising. The methods below it return ?Action like every other action on this class,
+    // for a caller that wants the raw record.
 
     /**
      * Is this server running?
      *
-     * A QUESTION SHAPED AS AN ACTION, so the answer is not in the response - it is in
-     * `resultData` on the action once it completes. Await it and read that.
+     * Returns the action, not the answer - see checkRunning(), which is almost certainly what
+     * you want. A COMPLETED action means yes and an ERRORED one means no, so awaiting this
+     * with Actions::await() raises for a stopped server.
      */
     public function isRunning(int $serverId): ?Action
     {
@@ -112,7 +131,11 @@ final class ServerActions extends Endpoint
     }
 
     /**
-     * Try to ping the server. The answer arrives in the completed action's `resultData`.
+     * Try to ping the server.
+     *
+     * NOT MEASURED. `is_running` and `uptime` both answer by completing or erroring, and this
+     * is the same shape, but nothing here has watched it do so - use ask() and read what comes
+     * back rather than trusting the pattern.
      */
     public function ping(int $serverId): ?Action
     {
@@ -120,11 +143,102 @@ final class ServerActions extends Endpoint
     }
 
     /**
-     * How long has this server been up? The answer arrives in `resultData`.
+     * How long has this server been up?
+     *
+     * Returns the action, not the answer - see checkUptime(). The uptime lands in
+     * `result_data` as a preformatted string: `"0 days,  0:02"`, doubled space and all. It is
+     * for showing a person, not for arithmetic.
      */
     public function uptime(int $serverId): ?Action
     {
         return $this->perform($serverId, 'uptime');
+    }
+
+    /**
+     * Perform a question-shaped action and wait for its answer, where ERRORED means "no"
+     * rather than "something went wrong".
+     *
+     * Answers the completed action, or NULL when it errored. Everything else still raises:
+     * ActionBlockedException for an action waiting on a question or an invoice, and
+     * ActionTimedOutException for a deadline, because neither of those is an answer.
+     *
+     * THE ONE THING THIS CANNOT DO is tell "the server said no" from "the check itself
+     * failed". BinaryLane reports an errored action with `error_message` null and a `reason`
+     * that narrates what was attempted, so there is nothing in the response to separate them.
+     * A null here means "the action did not succeed", and for `is_running` against a reachable
+     * account that means the server is not running.
+     *
+     * @param  callable(Action): void|null  $onPoll
+     * @param  callable(int): void|null  $wait
+     */
+    public function ask(
+        int $serverId,
+        string $type,
+        ?int $timeout = null,
+        ?int $interval = null,
+        ?callable $onPoll = null,
+        ?callable $wait = null,
+    ): ?Action {
+        $action = $this->perform($serverId, $type);
+
+        if ($action === null) {
+            throw new InvalidArgumentException(sprintf(
+                'The API accepted the "%s" action without returning one, so there is nothing to '
+                    . 'wait on and no answer to read. Check Servers::actions() for what it started.',
+                $type
+            ));
+        }
+
+        try {
+            return (new Actions($this->connection, $this->logger))
+                ->await($action, $timeout, $interval, $onPoll, $wait);
+        } catch (ActionFailedException) {
+            return null;
+        }
+    }
+
+    /**
+     * Is this server powered on?
+     *
+     * THE QUESTION `Server::$status` CANNOT ANSWER. A server that is powered off reports
+     * `active` like every other - measured - so this action is the only route to the truth,
+     * and it costs a poll or two rather than a field read.
+     *
+     * True when the action completed, false when it errored. Raises only for a blocked action
+     * or a timeout.
+     *
+     * @param  callable(int): void|null  $wait
+     */
+    public function checkRunning(
+        int $serverId,
+        ?int $timeout = null,
+        ?int $interval = null,
+        ?callable $wait = null,
+    ): bool {
+        return $this->ask($serverId, 'is_running', $timeout, $interval, null, $wait) !== null;
+    }
+
+    /**
+     * How long the server has been up, or null when it is not running.
+     *
+     * A PREFORMATTED STRING - `"0 days,  0:02"`, with two spaces before the clock. BinaryLane
+     * formats it for display and there is no numeric form, so parsing it is on you and the
+     * format is not promised.
+     *
+     * Null covers both "not running" and "the check failed", which the API does not
+     * distinguish - see ask().
+     *
+     * @param  callable(int): void|null  $wait
+     */
+    public function checkUptime(
+        int $serverId,
+        ?int $timeout = null,
+        ?int $interval = null,
+        ?callable $wait = null,
+    ): ?string {
+        $action = $this->ask($serverId, 'uptime', $timeout, $interval, null, $wait);
+
+        return $action !== null && $action->hasResult() ? $action->resultData : null;
     }
 
     // ----------------------------------------------------------------------------------

@@ -44,6 +44,16 @@ it covers.
   prefer it and say plainly when there is nothing to say.
 * **`result_data` on an errored action is an empty string, not null** — so `=== null` is not
   the test for "no answer". `Action::hasResult()` is.
+* **A question-shaped action answers by COMPLETING OR ERRORING, not in its payload**, and
+  `ServerActions::ask()`, `checkRunning()` and `checkUptime()` exist because of it. Measured
+  both ways on 13 September 2026 against a server stopped and then started: `is_running`
+  completed with a null `result_data` when the server was up and errored when it was down;
+  `uptime` did the same with `"0 days,  0:02"` in place of the null. Because `Actions::await()`
+  raises on an errored action, asking "is this server running?" the obvious way THROWS when the
+  answer is no — these map that to `false` instead, while still raising for a blocked action or
+  a timeout, neither of which is an answer.
+* **An uptime is a preformatted string** — `"0 days,  0:02"`, doubled space and all. There is
+  no numeric form.
 * **A 401 carries no body**, measured against the live API on 12 September 2026 —
   `content-length: 0`, byte-identical for a bad token and for no token. `NotAuthenticatedException`
   writes its own message because there is nothing to quote.
@@ -91,8 +101,11 @@ What a single account and a single run could not settle. Each has a harness exer
 it, so re-running on a different account may answer them.
 
 * Whether any server action answers `202` in practice. The one measured answered `200`.
-* What `result_data` carries for a question-shaped action that SUCCEEDS. The one measured
-  errored, and reported an empty string.
+* Whether `ping` follows the same complete-or-error pattern as `is_running` and `uptime`. It
+  is the same shape and has not been watched.
+* Whether `ServerStatus::Off` is ever reported. A guest-initiated shutdown leaves `active`, and
+  BinaryLane's own web UI offers no power-off at all — only power-cycle — so an API-initiated
+  `power_off` or `shutdown` is the only thing that could set it, and that was not tested.
 * Whether a size kept by the `?image=` filter ever has its region list narrowed. The filter is
   honoured — it drops sizes the image cannot be installed on — but no narrowing was observable
   on an account where every distribution is offered in every region.

@@ -11,6 +11,7 @@ use Hampel\BinaryLane\Api\Enum\AdvancedFirewallRuleAction;
 use Hampel\BinaryLane\Api\Enum\AdvancedFirewallRuleProtocol;
 use Hampel\BinaryLane\Api\Enum\BackupSlot;
 use Hampel\BinaryLane\Api\Enum\ThresholdAlertType;
+use Hampel\BinaryLane\Api\Exception\ActionBlockedException;
 use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
 use Hampel\BinaryLane\Api\Request\AdvancedFeatures;
 use Hampel\BinaryLane\Api\Request\ChangeImage;
@@ -73,19 +74,85 @@ final class ServerActionsTest extends TestCase
     }
 
     /**
-     * The answer to `uptime` is not in the response - it arrives in the completed action's
-     * resultData.
+     * THE ANSWER IS THE ACTION'S STATUS, not its payload. Measured 13 September 2026 against a
+     * server stopped and then started: `is_running` completed with a null result_data when the
+     * server was up and ERRORED when it was down, and `uptime` did the same with a formatted
+     * string in place of the null.
+     *
+     * That collides with await(), which raises on an errored action - so asking "is this
+     * server up?" the obvious way throws when the answer is simply no. ask() is the fix.
      */
-    public function testAQuestionActionCarriesItsAnswerInResultData(): void
+    public function testAQuestionActionAnswersByCompletingRatherThanByItsPayload(): void
     {
-        $this->client->pushJson(200, $this->action(1, 'completed', [
-            'type' => 'uptime',
-            'result_data' => '14 days, 3 hours',
-        ]));
+        // Running: the action completes, and is_running reports nothing at all.
+        $this->client
+            ->pushJson(200, $this->action(1, 'in-progress', ['type' => 'is_running']))
+            ->pushJson(200, $this->action(1, 'completed', ['type' => 'is_running', 'result_data' => null]));
+
+        $this->assertTrue($this->binarylane()->serverActions()->checkRunning(1234));
+    }
+
+    public function testAQuestionActionThatErroredIsAnAnswerRatherThanAFailure(): void
+    {
+        $this->client
+            ->pushJson(200, $this->action(1, 'in-progress', ['type' => 'is_running']))
+            ->pushJson(200, $this->action(1, 'errored', [
+                'type' => 'is_running',
+                'reason' => 'Your server status is being checked',
+                'error_message' => null,
+            ]));
+
+        // The obvious route raises; checkRunning() does not.
+        $this->assertFalse($this->binarylane()->serverActions()->checkRunning(1234));
+    }
+
+    /**
+     * The uptime comes back preformatted, doubled space and all - there is no numeric form.
+     */
+    public function testUptimeAnswersWithTheStringBinaryLaneFormatted(): void
+    {
+        $this->client
+            ->pushJson(200, $this->action(1, 'in-progress', ['type' => 'uptime']))
+            ->pushJson(200, $this->action(1, 'completed', ['type' => 'uptime', 'result_data' => '0 days,  0:02']));
+
+        $this->assertSame('0 days,  0:02', $this->binarylane()->serverActions()->checkUptime(1234));
+    }
+
+    public function testUptimeAnswersNullWhenTheServerIsNotRunning(): void
+    {
+        $this->client
+            ->pushJson(200, $this->action(1, 'in-progress', ['type' => 'uptime']))
+            ->pushJson(200, $this->action(1, 'errored', ['type' => 'uptime', 'result_data' => '']));
+
+        $this->assertNull($this->binarylane()->serverActions()->checkUptime(1234));
+    }
+
+    /**
+     * A blocked or timed-out action is not an answer, so those still raise.
+     */
+    public function testAskStillRaisesForAnActionThatIsNotAnswering(): void
+    {
+        // Two responses: the POST that starts the action, then the first poll.
+        $blocked = $this->action(1, 'in-progress', [
+            'type' => 'is_running',
+            'user_interaction_required' => ['interaction_type' => 'allow-unclean-power-off'],
+        ]);
+
+        $this->client->pushJson(200, $blocked)->pushJson(200, $blocked);
+
+        $this->expectException(ActionBlockedException::class);
+
+        $this->binarylane()->serverActions()->checkRunning(1234);
+    }
+
+    public function testTheRawActionIsStillAvailableForACallerThatWantsIt(): void
+    {
+        $this->client->pushJson(200, $this->action(1, 'completed', ['type' => 'uptime', 'result_data' => '9 days']));
 
         $action = $this->binarylane()->serverActions()->uptime(1234);
 
-        $this->assertSame('14 days, 3 hours', $action?->resultData);
+        $this->assertSame('9 days', $action?->resultData);
+        $this->assertSame(['type' => 'uptime'], $this->sentBody());
     }
 
     public function testRenameSendsTheName(): void

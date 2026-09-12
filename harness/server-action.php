@@ -91,6 +91,25 @@ if (!$server->isActionable()) {
     exit(1);
 }
 
+// Ask first, because `status` cannot tell you and uptime errors on a stopped server - which
+// would be reported below as a failure when it is really an answer.
+$io->info('0. is it actually running? `status` cannot say - see ServerStatus');
+
+$running = $binarylane->serverActions()->checkRunning($serverId, timeout: 120, interval: 2);
+
+$io->values([
+    'status field' => $server->status?->value ?? '?',
+    'checkRunning()' => $running ? 'true' : 'false',
+]);
+
+if (!$running) {
+    $io->line();
+    $io->warn('the server is not running, so uptime will error - which is this API answering "no"');
+    $io->warn('rather than anything going wrong. Start it first if you want the uptime path.');
+}
+
+$io->line();
+
 try {
     $io->info('1. performing the action');
 
