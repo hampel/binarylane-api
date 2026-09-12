@@ -75,7 +75,7 @@ final class ServersTest extends TestCase
         $this->assertSame(1234, $server->id);
         $this->assertSame('vps01.example.test', $server->name);
         $this->assertSame(ServerStatus::Active, $server->status);
-        $this->assertTrue($server->isRunning());
+        $this->assertTrue($server->isInService());
         $this->assertTrue($server->isActionable());
         $this->assertFalse($server->isInVpc());
         $this->assertSame('syd', $server->regionSlug());
@@ -85,7 +85,7 @@ final class ServersTest extends TestCase
     /**
      * The wire value is the string `off`, which YAML 1.1 parsers read as boolean false.
      */
-    public function testItRecognisesAPoweredOffServer(): void
+    public function testItRecognisesAnExplicitlyPoweredOffServer(): void
     {
         $this->client->pushJson(200, ['server' => $this->serverRow(['status' => 'off'])]);
 
@@ -93,9 +93,40 @@ final class ServersTest extends TestCase
 
         $this->assertSame(ServerStatus::Off, $server->status);
         $this->assertSame('off', $server->status->value);
-        $this->assertTrue($server->isOff());
-        $this->assertTrue($server->canPowerOn());
+        $this->assertTrue($server->isExplicitlyPoweredOff());
+        $this->assertTrue($server->permitsPowerOn());
         $this->assertFalse($server->isCancelled());
+    }
+
+    /**
+     * THE FINDING THAT COST THIS PACKAGE A METHOD. Measured on 13 September 2026: a server
+     * that was genuinely powered off reported `active`, exactly as its running neighbours
+     * did, and nothing else in the payload carries a power state.
+     *
+     * So `active` cannot be read as "running" - the old isRunning() did, and was wrong on
+     * precisely the server it mattered for. The payload can say a server is in service; it
+     * cannot say whether the operating system is up, and ServerActions::isRunning() exists
+     * because of that.
+     */
+    public function testAnActiveServerIsNotNecessarilyPoweredOn(): void
+    {
+        $this->client->pushJson(200, ['server' => $this->serverRow(['status' => 'active'])]);
+
+        $server = $this->binarylane()->servers()->get(1234);
+
+        $this->assertTrue($server->isInService(), 'provisioned and paid for');
+        $this->assertFalse(
+            $server->isExplicitlyPoweredOff(),
+            'and the API did not say it was off - which is not the same as it being on'
+        );
+        $this->assertFalse($server->isDefinitelyStopped(), 'the payload cannot settle it either way');
+        $this->assertTrue($server->permitsPowerOn(), 'nothing in the state forbids a power-on');
+
+        $this->assertFalse(
+            (new \ReflectionClass(Server::class))->hasMethod('isRunning'),
+            'Server must not offer isRunning(): the payload cannot answer it, and a method that '
+                . 'looks like it can is worse than no method at all'
+        );
     }
 
     /**
@@ -111,9 +142,9 @@ final class ServersTest extends TestCase
 
         $server = $this->binarylane()->servers()->get(1234);
 
-        $this->assertTrue($server->isOff());
         $this->assertTrue($server->isCancelled());
-        $this->assertFalse($server->canPowerOn());
+        $this->assertTrue($server->isDefinitelyStopped());
+        $this->assertFalse($server->permitsPowerOn());
     }
 
     public function testAServerUnderMaintenanceIsNotActionable(): void
@@ -123,7 +154,7 @@ final class ServersTest extends TestCase
         $server = $this->binarylane()->servers()->get(1234);
 
         $this->assertFalse($server->isActionable());
-        $this->assertFalse($server->canPowerOn());
+        $this->assertFalse($server->permitsPowerOn());
     }
 
     public function testItSortsTheAddressesByReachabilityRatherThanByFamily(): void

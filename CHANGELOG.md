@@ -52,9 +52,18 @@ it covers.
   populated on a real object that is missing.
 * **The API sends `X-Spec-Version`** (`0.40.0` when measured) and the specification declares no
   response headers at all. `ResponseMeta` keeps every header, and `specVersion()` names that one.
+* **`status` IS NOT A POWER STATE, and `Server` has no `isRunning()` because of it.** Measured
+  on 13 September 2026: a server that was genuinely powered off reported `active`, exactly as
+  its sixteen running neighbours did, and no other field in the payload carries a power state.
+  `active` means provisioned and in service. The API's own design agrees — it provides a
+  dedicated `is_running` ACTION, which would be redundant if the field answered the question.
+  `Server::isInService()`, `isExplicitlyPoweredOff()` and `permitsPowerOn()` replace the three
+  methods that read the field as though it were a power state. `ServerStatus::Off` was never
+  observed on a server that was in exactly that condition, so treat its absence as meaningless
+  and its presence as reliable.
 * **`ServerStatus::Off` has the wire value `off`**, which YAML 1.1 parsers read as boolean
   `false`. Anything generated from the published specification without accounting for that gets
-  a client that cannot recognise a powered-off server.
+  a client that cannot recognise a powered-off server when one is reported.
 * **`ImageStatus::New` is upper case** on the wire — `NEW` — alone among the four.
 * **Pagination follows the API's `next` link** rather than incrementing a page number, and
   refuses a link that does not point at the configured API. A link out of a response body is

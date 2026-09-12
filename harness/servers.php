@@ -15,8 +15,9 @@
  *   - `netmask`, which the specification declares as either an integer or a string. An IPv6
  *     network should report a prefix length and an IPv4 one a dotted mask; this prints both
  *     so the claim can be checked rather than assumed.
- *   - `is_under_maintenance` and the two ways of being powered off, which between them
- *     explain most otherwise inexplicable 400s.
+ *   - `is_under_maintenance`, and the fact that `status` is NOT a power state: a server that
+ *     is powered off reports `active` like everything else, which is why the package offers no
+ *     isRunning() on a Server. Between them these explain most otherwise inexplicable 400s.
  *
  * It also reads the transfer usage, which is POOLED across the account - so a server over its
  * own allowance may be perfectly fine, and only the total says anything.
@@ -54,7 +55,7 @@ try {
         $io->values([
             'permalink' => $server->permalink ?? '(none)',
             'region' => $server->regionSlug() ?? '(none)',
-            'status' => $server->status?->value ?? '(unrecognised)',
+            'status' => ($server->status?->value ?? '(unrecognised)') . ' - a lifecycle state, not a power state',
             'under maintenance' => $server->isUnderMaintenance ? 'YES - most actions will be refused' : 'no',
             'actionable' => $server->isActionable() ? 'yes' : 'NO',
             'cancelled' => $server->isCancelled() ? 'YES' : 'no',

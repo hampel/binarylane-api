@@ -16,9 +16,15 @@ use Hampel\BinaryLane\Api\Support\Cast;
  * addresses - and the top-level `memory`, `vcpus` and `disk` fields here follow the SERVER,
  * so they are the ones to read.
  *
- * `status` HAS TWO WAYS OF BEING OFF. `off` is a server you can power back on; `archive` is
- * one powered off for cancellation or non-payment, which needs Uncancel first. See
- * ServerStatus, which also records the wire value that YAML parsers get wrong.
+ * `status` DOES NOT TELL YOU WHETHER THE SERVER IS POWERED ON. Measured on 13 September 2026:
+ * a server that was powered off reported `active`, exactly as its running neighbours did, and
+ * no other field in this payload carries a power state. `active` means "provisioned and in
+ * service" - a lifecycle state. The API's own design says the same, by providing a dedicated
+ * `is_running` action that would otherwise be redundant.
+ *
+ * So there is no isRunning() here, deliberately, and there was one until it was found to be
+ * lying. Ask ServerActions::isRunning() and await the answer, or accept that you do not know.
+ * See ServerStatus.
  *
  * `isUnderMaintenance` IS THE FIELD THAT EXPLAINS OTHERWISE INEXPLICABLE REFUSALS - the
  * specification says most actions are unavailable while it is true. Check it before
@@ -118,20 +124,25 @@ final class Server implements \JsonSerializable
     }
 
     /**
-     * Whether the server is powered on and usable.
+     * Whether the server is provisioned and paid for.
+     *
+     * THE HONEST READING OF `active`, and not a power state - see the class note. A
+     * powered-off server reports true here.
      */
-    public function isRunning(): bool
+    public function isInService(): bool
     {
-        return $this->status?->isRunning() ?? false;
+        return $this->status?->isInService() ?? false;
     }
 
     /**
-     * Whether the server is powered off, either because it was turned off or because it was
-     * cancelled. isCancelled() is how to tell those apart.
+     * Whether the API is explicitly reporting the server as powered off.
+     *
+     * TRUE IS RELIABLE; FALSE IS NOT, because a server that is off may report `active`.
+     * ServerActions::isRunning() is the only question that gets a real answer.
      */
-    public function isOff(): bool
+    public function isExplicitlyPoweredOff(): bool
     {
-        return $this->status?->isOff() ?? false;
+        return $this->status?->isExplicitlyPoweredOff() ?? false;
     }
 
     /**
@@ -147,12 +158,27 @@ final class Server implements \JsonSerializable
     }
 
     /**
-     * Whether a power-on could work right now. False for a cancelled server, which needs
-     * Uncancel first, and for one still being built.
+     * Whether the server is stopped for certain - cancelled or not yet built.
+     *
+     * The complement of this is NOT "running": a server in service may be powered off and
+     * still report `active`. This is the half of the question the payload can answer.
      */
-    public function canPowerOn(): bool
+    public function isDefinitelyStopped(): bool
     {
-        return ($this->status?->canPowerOn() ?? false) && !$this->isUnderMaintenance;
+        return $this->isCancelled() || ($this->status?->isBuilding() ?? false);
+    }
+
+    /**
+     * Whether anything in the server's state stands in the way of a power-on.
+     *
+     * NOT "the server is off" - the status cannot say. A running server passes this too, and
+     * powering on a server that is already on is the API's to refuse. What it catches is the
+     * cancelled server, the half-built one and the one under maintenance, which are the three
+     * that fail with a 400 about the request rather than about the server.
+     */
+    public function permitsPowerOn(): bool
+    {
+        return ($this->status?->permitsPowerOn() ?? false) && !$this->isUnderMaintenance;
     }
 
     /**
@@ -163,7 +189,7 @@ final class Server implements \JsonSerializable
      */
     public function isActionable(): bool
     {
-        return !$this->isUnderMaintenance && $this->status !== ServerStatus::New;
+        return !$this->isUnderMaintenance && !($this->status?->isBuilding() ?? false);
     }
 
     /**

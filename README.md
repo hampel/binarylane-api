@@ -182,9 +182,20 @@ complete is often the first twenty of several hundred.
 $server = $binarylane->servers()->get(1234);
 
 $server->publicAddress();                     // null is legitimate - see below
-$server->isRunning();
+$server->isInService();                       // provisioned and paid for - NOT "powered on"
 $server->isActionable();                      // false under maintenance, or while building
 $server->selectedSizeOptions?->memory;        // what THIS server has, in MB
+```
+
+**`status` does not tell you whether a server is powered on.** A server that was genuinely off
+reported `active`, exactly as its running neighbours did, and nothing else in the payload
+carries a power state. That is why there is no `isRunning()` on `Server` — there was one, and
+it was wrong on precisely the server it mattered for. The API's own design agrees: it provides
+a dedicated action for the question.
+
+```php
+$action = $binarylane->serverActions()->isRunning(1234);
+$answer = $binarylane->actions()->await($action)->resultData;
 ```
 
 Read `selectedSizeOptions` rather than `size` for what a server actually has. The size is the
