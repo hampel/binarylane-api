@@ -9,6 +9,8 @@ use Hampel\BinaryLane\Api\Authentication\Authentication;
 use Hampel\BinaryLane\Api\Endpoint\Account;
 use Hampel\BinaryLane\Api\Endpoint\Actions;
 use Hampel\BinaryLane\Api\Endpoint\Endpoint;
+use Hampel\BinaryLane\Api\Endpoint\ServerActions;
+use Hampel\BinaryLane\Api\Endpoint\Servers;
 use Hampel\BinaryLane\Api\Entity\Account as AccountEntity;
 use Hampel\BinaryLane\Api\Support\Psr17Discovery;
 use Psr\Http\Client\ClientInterface;
@@ -201,6 +203,25 @@ final class Client
     public function actions(): Actions
     {
         return $this->endpoint(Actions::class);
+    }
+
+    /**
+     * Servers: reading them, creating them, cancelling them.
+     */
+    public function servers(): Servers
+    {
+        return $this->endpoint(Servers::class);
+    }
+
+    /**
+     * Everything you can do TO a server - power, resize, rebuild, backups, disks, networking.
+     *
+     * Separate from servers() because the API separates them: these are all one POST with a
+     * `type` discriminator, and every one of them answers with an action rather than a result.
+     */
+    public function serverActions(): ServerActions
+    {
+        return $this->endpoint(ServerActions::class);
     }
 
     /**
