@@ -181,8 +181,10 @@ final class Cast
      *
      * THE TIMEZONE IS ASSUMED, NOT READ, WHEN THE STRING DOES NOT CARRY ONE. Every timestamp
      * in the specification is documented as "the timestamp in ISO8601 format" with
-     * `format: date-time` and no example, so the wire form cannot be confirmed from the
-     * specification alone. Two things follow and both are handled here:
+     * `format: date-time` and no example against the field - the one worked example anywhere
+     * in the document is on the sample-set query parameters, `2022-12-30T22:50:00Z`, which
+     * carries a `Z`. That is good evidence for the ordinary case and not a guarantee for every
+     * field, so both are handled here:
      *
      *  - A value that DOES carry an offset or a `Z` is parsed as written and converted to
      *    UTC, which is the case the API is expected to produce.

@@ -446,6 +446,84 @@ final class ServerActionsTest extends TestCase
         $this->assertSame(['type' => 'some_new_action', 'field' => 'value'], $this->sentBody());
     }
 
+
+    /**
+     * The forty-two discriminator values in the specification, each mapped to the method that
+     * sends it.
+     *
+     * This exists as a completeness check rather than a behaviour one: the API chooses between
+     * these operations by a string, so an action this package forgot to wrap is invisible
+     * except by counting. The list is the specification's `discriminator.mapping` keys, in its
+     * order.
+     */
+    public function testEveryDocumentedServerActionHasAMethod(): void
+    {
+        $actions = $this->binarylane()->serverActions();
+        $rule = new AdvancedFirewallRule(
+            ['0.0.0.0/0'],
+            ['203.0.113.10'],
+            AdvancedFirewallRuleProtocol::Tcp,
+            AdvancedFirewallRuleAction::Accept,
+        );
+
+        $calls = [
+            'add_disk' => static fn () => $actions->addDisk(1, 10),
+            'attach_backup' => static fn () => $actions->attachBackup(1, 9001),
+            'change_advanced_features' => static fn () => $actions->changeAdvancedFeatures(1, AdvancedFeatures::none()->withoutFeatures()),
+            'change_advanced_firewall_rules' => static fn () => $actions->changeAdvancedFirewallRules(1, [$rule]),
+            'change_backup_schedule' => static fn () => $actions->changeBackupSchedule(1, hourOfDay: 2),
+            'change_ipv6' => static fn () => $actions->changeIpv6(1, true),
+            'change_ipv6_reverse_nameservers' => static fn () => $actions->changeIpv6ReverseNameservers(1, ['ns1.example.test']),
+            'change_kernel' => static fn () => $actions->changeKernel(1, 7),
+            'change_manage_offsite_backup_copies' => static fn () => $actions->changeManageOffsiteBackupCopies(1, true),
+            'change_network' => static fn () => $actions->changeNetwork(1, 3),
+            'change_offsite_backup_location' => static fn () => $actions->changeOffsiteBackupLocation(1, 's3://bucket'),
+            'change_partner' => static fn () => $actions->changePartner(1, 2),
+            'change_port_blocking' => static fn () => $actions->changePortBlocking(1, false),
+            'change_region' => static fn () => $actions->changeRegion(1, 'mel'),
+            'change_reverse_name' => static fn () => $actions->changeReverseName(1, '203.0.113.10', 'host.example.test'),
+            'change_separate_private_network_interface' => static fn () => $actions->changeSeparatePrivateNetworkInterface(1, true),
+            'change_source_and_destination_check' => static fn () => $actions->changeSourceAndDestinationCheck(1, false),
+            'change_threshold_alerts' => static fn () => $actions->changeThresholdAlerts(1, [ThresholdAlert::enable(ThresholdAlertType::Cpu)]),
+            'change_vpc_ipv4' => static fn () => $actions->changeVpcIpv4(1, '10.0.0.1', '10.0.0.2'),
+            'clone_using_backup' => static fn () => $actions->cloneUsingBackup(1, 9001, 2),
+            'delete_disk' => static fn () => $actions->deleteDisk(1, 2),
+            'detach_backup' => static fn () => $actions->detachBackup(1),
+            'disable_backups' => static fn () => $actions->disableBackups(1),
+            'disable_selinux' => static fn () => $actions->disableSelinux(1),
+            'enable_backups' => static fn () => $actions->enableBackups(1),
+            'enable_ipv6' => static fn () => $actions->enableIpv6(1),
+            'is_running' => static fn () => $actions->isRunning(1),
+            'password_reset' => static fn () => $actions->passwordReset(1),
+            'ping' => static fn () => $actions->ping(1),
+            'power_cycle' => static fn () => $actions->powerCycle(1),
+            'power_off' => static fn () => $actions->powerOff(1),
+            'power_on' => static fn () => $actions->powerOn(1),
+            'reboot' => static fn () => $actions->reboot(1),
+            'rebuild' => static fn () => $actions->rebuild(1, 'ubuntu-24-04-lts'),
+            'rename' => static fn () => $actions->rename(1, 'vps01.example.test'),
+            'resize' => static fn () => $actions->resize(1, Resize::toSize('std-4vcpu')),
+            'resize_disk' => static fn () => $actions->resizeDisk(1, 2, 40),
+            'restore' => static fn () => $actions->restore(1, 9001),
+            'shutdown' => static fn () => $actions->shutdown(1),
+            'take_backup' => static fn () => $actions->takeBackup(1, TakeBackup::intoFreeSlot(BackupSlot::Daily)),
+            'uncancel' => static fn () => $actions->uncancel(1),
+            'uptime' => static fn () => $actions->uptime(1),
+        ];
+
+        $this->assertCount(42, $calls, 'the specification declares 42 server action types');
+
+        foreach ($calls as $type => $call) {
+            $this->client->pushJson(200, $this->action(1));
+
+            $call();
+
+            $body = $this->sentBody();
+
+            $this->assertSame($type, $body['type'] ?? null, "the method for {$type} sends the wrong type");
+        }
+    }
+
     public function testBackupBeforeChangesTakesTheBackupAndWaitsForIt(): void
     {
         $this->client

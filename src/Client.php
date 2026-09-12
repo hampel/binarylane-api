@@ -8,13 +8,19 @@ use Hampel\BinaryLane\Api\Authentication\ApiToken;
 use Hampel\BinaryLane\Api\Authentication\Authentication;
 use Hampel\BinaryLane\Api\Endpoint\Account;
 use Hampel\BinaryLane\Api\Endpoint\Actions;
+use Hampel\BinaryLane\Api\Endpoint\Billing;
+use Hampel\BinaryLane\Api\Endpoint\DataUsages;
 use Hampel\BinaryLane\Api\Endpoint\DomainRecords;
 use Hampel\BinaryLane\Api\Endpoint\Domains;
 use Hampel\BinaryLane\Api\Endpoint\Images;
+use Hampel\BinaryLane\Api\Endpoint\LoadBalancers;
 use Hampel\BinaryLane\Api\Endpoint\Regions;
+use Hampel\BinaryLane\Api\Endpoint\ReverseNames;
+use Hampel\BinaryLane\Api\Endpoint\SampleSets;
 use Hampel\BinaryLane\Api\Endpoint\Sizes;
 use Hampel\BinaryLane\Api\Endpoint\SoftwareCatalogue;
 use Hampel\BinaryLane\Api\Endpoint\SshKeys;
+use Hampel\BinaryLane\Api\Endpoint\Vpcs;
 use Hampel\BinaryLane\Api\Endpoint\Endpoint;
 use Hampel\BinaryLane\Api\Endpoint\ServerActions;
 use Hampel\BinaryLane\Api\Endpoint\Servers;
@@ -287,6 +293,54 @@ final class Client
     public function software(): SoftwareCatalogue
     {
         return $this->endpoint(SoftwareCatalogue::class);
+    }
+
+    /**
+     * Load balancers - HTTP and HTTPS only, regional or anycast.
+     */
+    public function loadBalancers(): LoadBalancers
+    {
+        return $this->endpoint(LoadBalancers::class);
+    }
+
+    /**
+     * Virtual private clouds, their route tables and their members.
+     */
+    public function vpcs(): Vpcs
+    {
+        return $this->endpoint(Vpcs::class);
+    }
+
+    /**
+     * Balance and invoices. The specification files these under a `Customers` tag.
+     */
+    public function billing(): Billing
+    {
+        return $this->endpoint(Billing::class);
+    }
+
+    /**
+     * Data transfer used this billing period - pooled across the account's servers.
+     */
+    public function dataUsages(): DataUsages
+    {
+        return $this->endpoint(DataUsages::class);
+    }
+
+    /**
+     * Performance and usage samples for a server.
+     */
+    public function sampleSets(): SampleSets
+    {
+        return $this->endpoint(SampleSets::class);
+    }
+
+    /**
+     * The account-wide IPv6 reverse nameservers.
+     */
+    public function reverseNames(): ReverseNames
+    {
+        return $this->endpoint(ReverseNames::class);
     }
 
     /**
