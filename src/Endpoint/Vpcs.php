@@ -107,7 +107,7 @@ final class Vpcs extends Endpoint
             $payload['route_entries'] = $this->routes($routes);
         }
 
-        return Vpc::fromArray($this->apiPost('vpcs', $payload)->object('vpc'));
+        return Vpc::fromArray($this->apiPost('vpcs', $payload)->requireObject('vpc'));
     }
 
     /**
@@ -137,7 +137,7 @@ final class Vpcs extends Endpoint
             $payload['route_entries'] = $this->routes($routes);
         }
 
-        return Vpc::fromArray($this->apiPatch($this->path($id), $payload)->object('vpc'));
+        return Vpc::fromArray($this->apiPatch($this->path($id), $payload)->requireObject('vpc'));
     }
 
     /**
@@ -160,7 +160,7 @@ final class Vpcs extends Endpoint
             $this->apiPut($this->path($id), [
                 'name' => $name,
                 'route_entries' => $this->routes($routes),
-            ])->object('vpc')
+            ])->requireObject('vpc')
         );
     }
 

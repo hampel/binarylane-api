@@ -71,7 +71,7 @@ final class Page implements \Countable, \IteratorAggregate, \JsonSerializable
     {
         $items = [];
 
-        foreach ($response->collection($key) as $row) {
+        foreach ($response->requireCollection($key) as $row) {
             $items[] = $map($row);
         }
 
@@ -176,6 +176,6 @@ final class Page implements \Countable, \IteratorAggregate, \JsonSerializable
      */
     public static function totalOf(ApiResponse $response, string $key): int
     {
-        return $response->total() ?? count($response->collection($key));
+        return $response->total() ?? count($response->requireCollection($key));
     }
 }

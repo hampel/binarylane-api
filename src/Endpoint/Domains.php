@@ -99,7 +99,7 @@ final class Domains extends Endpoint
             $payload['ip_address'] = trim($ipAddress);
         }
 
-        return Domain::fromArray($this->apiPost('domains', $payload)->object('domain'));
+        return Domain::fromArray($this->apiPost('domains', $payload)->requireObject('domain'));
     }
 
     /**
@@ -123,7 +123,7 @@ final class Domains extends Endpoint
      */
     public function publicNameservers(): array
     {
-        return Cast::strings($this->apiGet('domains/nameservers')->array('local_nameservers'));
+        return Cast::strings($this->apiGet('domains/nameservers')->requireArray('local_nameservers'));
     }
 
     /**

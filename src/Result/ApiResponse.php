@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hampel\BinaryLane\Api\Result;
 
+use Hampel\BinaryLane\Api\Exception\MalformedResponseException;
 use Hampel\BinaryLane\Api\Support\Cast;
 
 /**
@@ -75,6 +76,54 @@ final class ApiResponse implements \JsonSerializable
     }
 
     /**
+     * One top-level key that is expected to be a list, raising when it is not there.
+     *
+     * For the collections the API does not paginate - firewall rules, threshold alerts,
+     * nameservers, the load balancer availability options - whose items are not all objects,
+     * so requireCollection() is the wrong shape for them.
+     *
+     * @return array<mixed>
+     */
+    public function requireArray(string $key): array
+    {
+        $this->assertEnvelope($key);
+
+        return $this->array($key);
+    }
+
+    /**
+     * The object inside the envelope, raising when the envelope is not what it should be.
+     *
+     * THE ACCESSOR THE ENDPOINTS USE. `object()` answers `[]` for a key that is not there,
+     * which is right for the 202 path and wrong everywhere else: a 200 that parsed and lacks
+     * `server` is somebody else's answer, and mapped through an entity's fromArray() it
+     * becomes a Server with id 0 rather than an error.
+     *
+     * A deliberately bodiless response - a 202 or a 204 - still answers `[]`, because there
+     * the absence is the API's own design rather than a surprise.
+     *
+     * @return array<string, mixed>
+     */
+    public function requireObject(string $key): array
+    {
+        $this->assertEnvelope($key);
+
+        return $this->object($key);
+    }
+
+    /**
+     * The list inside the envelope, raising likewise.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function requireCollection(string $key): array
+    {
+        $this->assertEnvelope($key);
+
+        return $this->collection($key);
+    }
+
+    /**
      * The whole body as an object, for the one endpoint that does not use an envelope.
      *
      * @return array<string, mixed>
@@ -143,5 +192,22 @@ final class ApiResponse implements \JsonSerializable
     public function jsonSerialize(): array
     {
         return $this->data;
+    }
+
+    /**
+     * Refuse a body that carries something other than the envelope this endpoint answers with.
+     *
+     * An empty response passes, because 202 and 204 are bodiless by design and the endpoints
+     * that meet them turn the empty result into a null return of their own.
+     */
+    private function assertEnvelope(string $key): void
+    {
+        if ($this->data === []) {
+            return;
+        }
+
+        if (!array_key_exists($key, $this->data)) {
+            throw MalformedResponseException::missingKey($this->status, $key, $this->data);
+        }
     }
 }

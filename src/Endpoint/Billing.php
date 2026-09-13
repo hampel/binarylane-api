@@ -98,7 +98,7 @@ final class Billing extends Endpoint
     public function unpaidFailedInvoices(): array
     {
         return Cast::objects(
-            $this->apiGet('customers/my/unpaid-payment-failed-invoices')->array(self::COLLECTION),
+            $this->apiGet('customers/my/unpaid-payment-failed-invoices')->requireArray(self::COLLECTION),
             Invoice::fromArray(...)
         );
     }

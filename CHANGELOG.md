@@ -1,6 +1,27 @@
 CHANGELOG
 =========
 
+0.2.0 (2026-09-13)
+------------------
+
+**Breaking, hence 0.2.0 rather than 0.1.1:** code that relied on an unreadable `200` resolving
+to an empty result now gets an exception.
+
+* an empty-bodied `200` raises `MalformedResponseException`. Only `202` and `204` are successes
+  with no body, which is what the specification declares — all 104 of its `200`s carry a
+  content schema
+* a `2xx` that parsed and does not carry its envelope key raises `MalformedResponseException`.
+  Previously a `200` of `{"unexpected":true}` read as an empty page from `servers()->list()`
+  and as a `Server` with id 0 from `servers()->get()`
+* the collections the API does not paginate — firewall rules, threshold alerts, nameservers,
+  load balancer availability, unpaid invoices — are checked the same way
+* `Actions::await()` raises `MalformedResponseException` for an action whose status it cannot
+  classify, rather than treating it as still running and polling until the timeout
+* added `ApiResponse::requireObject()`, `requireCollection()` and `requireArray()`. `object()`,
+  `collection()` and `array()` keep their lenient behaviour for callers working through
+  `connection()`
+* a bodiless `202` still answers `null` from every `ServerActions` method
+
 0.1.0 (2026-09-13)
 ------------------
 

@@ -9,6 +9,7 @@ use Hampel\BinaryLane\Api\Exception\ActionBlockedException;
 use Hampel\BinaryLane\Api\Exception\ActionFailedException;
 use Hampel\BinaryLane\Api\Exception\ActionTimedOutException;
 use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
+use Hampel\BinaryLane\Api\Exception\MalformedResponseException;
 use Hampel\BinaryLane\Api\Result\Page;
 
 /**
@@ -114,7 +115,7 @@ final class Actions extends Endpoint
         $id = self::idOf($action);
 
         return Action::fromArray(
-            $this->apiPost($this->path($id) . '/proceed', ['proceed' => $proceed])->object('action')
+            $this->apiPost($this->path($id) . '/proceed', ['proceed' => $proceed])->requireObject('action')
         );
     }
 
@@ -129,6 +130,9 @@ final class Actions extends Endpoint
      *  - ActionBlockedException - it is waiting on an answer, or on an unpaid invoice.
      *    Neither resolves by waiting; see the exception.
      *  - ActionTimedOutException - `$timeout` was reached. NOTHING WAS CANCELLED.
+     *  - MalformedResponseException - the action's status cannot be classified, so waiting
+     *    longer would only postpone saying so. Added in 0.2.0; 0.1.0 treated such an action as
+     *    still running and polled it until it timed out.
      *  - whatever the request itself raised, untouched.
      *
      * THE FIRST CHECK HAPPENS BEFORE THE FIRST SLEEP. An action that is already finished -
@@ -183,6 +187,23 @@ final class Actions extends Endpoint
 
             if ($onPoll !== null) {
                 $onPoll($current);
+            }
+
+            // A status this package cannot classify is neither running nor finished, so
+            // nothing can be concluded from it - and treating it as running polls it to the
+            // deadline and then reports a timeout of an action that may never have existed.
+            // With the envelope check in place a malformed response is caught before it gets
+            // here; what remains is a status the API has added since this release.
+            if ($current->status === null) {
+                $this->logger->error('BinaryLane action has an unclassifiable status', [
+                    'action' => $current->id,
+                    'status' => $current->raw['status'] ?? null,
+                ]);
+
+                throw MalformedResponseException::unusableActionStatus(
+                    $current->id,
+                    $current->raw['status'] ?? null
+                );
             }
 
             if ($current->hasFailed()) {

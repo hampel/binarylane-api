@@ -137,7 +137,7 @@ abstract class Endpoint
      */
     protected function apiObject(string $path, string $key, callable $map, array $query = []): mixed
     {
-        return $map($this->apiGet($path, $query)->object($key));
+        return $map($this->apiGet($path, $query)->requireObject($key));
     }
 
     /**
@@ -164,7 +164,7 @@ abstract class Endpoint
             return null;
         }
 
-        $object = $response->object($key);
+        $object = $response->requireObject($key);
 
         return $object === [] ? null : $map($object);
     }

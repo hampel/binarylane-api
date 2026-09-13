@@ -145,7 +145,7 @@ final class DomainRecords extends Endpoint
         }
 
         return DomainRecord::fromArray(
-            $this->apiPost($this->path($domain), $record->toArray())->object('domain_record')
+            $this->apiPost($this->path($domain), $record->toArray())->requireObject('domain_record')
         );
     }
 
@@ -173,7 +173,7 @@ final class DomainRecords extends Endpoint
         }
 
         return DomainRecord::fromArray(
-            $this->apiPut($this->path($domain, $recordId), $changes)->object('domain_record')
+            $this->apiPut($this->path($domain, $recordId), $changes)->requireObject('domain_record')
         );
     }
 
@@ -187,7 +187,7 @@ final class DomainRecords extends Endpoint
     public function replace(string $domain, int $recordId, DomainRecord $record): DomainRecord
     {
         return DomainRecord::fromArray(
-            $this->apiPut($this->path($domain, $recordId), $record->toUpdateArray())->object('domain_record')
+            $this->apiPut($this->path($domain, $recordId), $record->toUpdateArray())->requireObject('domain_record')
         );
     }
 

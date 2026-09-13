@@ -137,7 +137,7 @@ try {
 | 429 | `TooManyRequestsException` | not in the specification; mapped defensively |
 | 5xx | `ServerException` | |
 | other 4xx | `ClientException` | |
-| 2xx that is not JSON | `MalformedResponseException` | a proxy page read as an empty list is the accident this prevents |
+| 2xx this package cannot act on | `MalformedResponseException` | not JSON, an empty body on any status but 202/204, or a body missing its envelope key — a proxy page read as an empty list is the accident this prevents |
 | never answered | `RequestException` | DNS, TLS, timeout — the only one worth retrying blindly |
 
 An action that fails raises `ActionFailedException`, `ActionBlockedException` or

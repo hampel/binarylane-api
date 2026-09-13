@@ -122,7 +122,7 @@ final class SshKeys extends Endpoint
                 'public_key' => $publicKey,
                 'name' => $name,
                 'default' => $default,
-            ])->object('ssh_key')
+            ])->requireObject('ssh_key')
         );
     }
 
@@ -151,7 +151,7 @@ final class SshKeys extends Endpoint
             $payload['default'] = $default;
         }
 
-        return SshKey::fromArray($this->apiPut($this->path($key), $payload)->object('ssh_key'));
+        return SshKey::fromArray($this->apiPut($this->path($key), $payload)->requireObject('ssh_key'));
     }
 
     /**

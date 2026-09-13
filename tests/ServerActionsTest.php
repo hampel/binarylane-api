@@ -13,6 +13,7 @@ use Hampel\BinaryLane\Api\Enum\BackupSlot;
 use Hampel\BinaryLane\Api\Enum\ThresholdAlertType;
 use Hampel\BinaryLane\Api\Exception\ActionBlockedException;
 use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
+use Hampel\BinaryLane\Api\Exception\MalformedResponseException;
 use Hampel\BinaryLane\Api\Request\AdvancedFeatures;
 use Hampel\BinaryLane\Api\Request\ChangeImage;
 use Hampel\BinaryLane\Api\Request\Resize;
@@ -43,6 +44,30 @@ final class ServerActionsTest extends TestCase
         $this->client->pushRaw(202, '');
 
         $this->assertNull($this->binarylane()->serverActions()->powerOn(1234));
+    }
+
+    /**
+     * The one place a missing envelope key is legitimate, and it must stay that way: a 202
+     * carries no body, and perform() turns that into null. Guarded because the 0.2.0 envelope
+     * check made every other call site strict, and this is the exception.
+     */
+    public function testAnAccepted202StillAnswersNullRatherThanRaising(): void
+    {
+        $this->client->pushRaw(202, '');
+
+        $this->assertNull($this->binarylane()->serverActions()->powerOn(1234));
+    }
+
+    /**
+     * A 200 that parsed and lacks `action` is not the 202 case - it is somebody else's answer.
+     */
+    public function testA200WithoutTheActionKeyIsMalformed(): void
+    {
+        $this->client->pushJson(200, ['unexpected' => true]);
+
+        $this->expectException(MalformedResponseException::class);
+
+        $this->binarylane()->serverActions()->powerOn(1234);
     }
 
     public function testThePowerActionsSendTheRightTypes(): void

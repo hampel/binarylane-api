@@ -46,7 +46,7 @@ final class ReverseNames extends Endpoint
             $response = $this->apiGet($uri, $query);
             $query = [];
 
-            foreach (Cast::strings($response->array(self::COLLECTION)) as $name) {
+            foreach (Cast::strings($response->requireArray(self::COLLECTION)) as $name) {
                 $names[] = $name;
             }
 
@@ -77,7 +77,7 @@ final class ReverseNames extends Endpoint
             'reverse_nameservers' => array_values(array_map(trim(...), $nameservers)),
         ]);
 
-        return Cast::strings($response->array(self::COLLECTION));
+        return Cast::strings($response->requireArray(self::COLLECTION));
     }
 
     /**

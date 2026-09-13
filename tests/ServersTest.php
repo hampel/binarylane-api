@@ -9,6 +9,7 @@ use Hampel\BinaryLane\Api\Entity\Server;
 use Hampel\BinaryLane\Api\Enum\NetworkType;
 use Hampel\BinaryLane\Api\Enum\ServerStatus;
 use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
+use Hampel\BinaryLane\Api\Exception\MalformedResponseException;
 use Hampel\BinaryLane\Api\Request\CreateServer;
 use Hampel\BinaryLane\Api\Request\SizeOptions;
 
@@ -388,6 +389,22 @@ final class ServersTest extends TestCase
         $this->assertStringContainsString('on any port', $rules[0]->describe());
     }
 
+    /**
+     * The collections the API does not paginate had the same hole and are easy to miss,
+     * because they read through array() rather than collection(). A malformed envelope used
+     * to answer "this server has no firewall rules", which on a firewall is the worst
+     * possible direction to be wrong in.
+     */
+    public function testANonPaginatedCollectionWithoutItsKeyIsMalformed(): void
+    {
+        $this->client->pushJson(200, ['unexpected' => true]);
+
+        $this->expectException(MalformedResponseException::class);
+        $this->expectExceptionMessage('without the expected "firewall_rules" key');
+
+        $this->binarylane()->servers()->advancedFirewallRules(1234);
+    }
+
     public function testTheFleetAlertCheckIsOneRequestAnswringIdsOnly(): void
     {
         $this->client->pushJson(200, ['server_ids' => [1234, 5678]]);
@@ -487,6 +504,60 @@ final class ServersTest extends TestCase
         $this->assertNotNull($info);
         $this->assertFalse($info->isRestorable());
         $this->assertFalse($info->fitsIn(10000));
+    }
+
+    /**
+     * THE SECOND HALF OF THE 0.1.0 HOLE, and it is not about empty bodies. A 200 that parsed
+     * and lacks its envelope key was read as `[]`, so `get()` answered a Server with id 0 and
+     * every field defaulted rather than raising. A body that decoded and does not carry
+     * `server` is somebody else's answer as surely as one that did not decode.
+     */
+    public function testA200WithoutItsEnvelopeKeyIsMalformedRatherThanABlankServer(): void
+    {
+        $this->client->pushJson(200, ['unexpected' => true]);
+
+        try {
+            $this->binarylane()->servers()->get(1234);
+
+            $this->fail('expected a MalformedResponseException');
+        } catch (MalformedResponseException $e) {
+            $this->assertStringContainsString('without the expected "server" key', $e->getMessage());
+            $this->assertStringContainsString('The body carried: unexpected', $e->getMessage());
+        }
+    }
+
+    public function testAListWithoutItsCollectionKeyIsMalformedRatherThanAnEmptyPage(): void
+    {
+        $this->client->pushJson(200, ['unexpected' => true]);
+
+        $this->expectException(MalformedResponseException::class);
+        $this->expectExceptionMessage('without the expected "servers" key');
+
+        $this->binarylane()->servers()->list();
+    }
+
+    /**
+     * count() reads the same envelope and had the same hole - it answered 0.
+     */
+    public function testACountWithoutItsCollectionKeyIsMalformed(): void
+    {
+        $this->client->pushJson(200, ['unexpected' => true]);
+
+        $this->expectException(MalformedResponseException::class);
+
+        $this->binarylane()->servers()->count();
+    }
+
+    /**
+     * find() means "no such server", not "the API said something I cannot read".
+     */
+    public function testFindStillRaisesForAMalformedEnvelope(): void
+    {
+        $this->client->pushJson(200, ['unexpected' => true]);
+
+        $this->expectException(MalformedResponseException::class);
+
+        $this->binarylane()->servers()->find(1234);
     }
 
     public function testItKeepsUnrecognisedFieldsOnTheServer(): void

@@ -144,7 +144,7 @@ final class Images extends Endpoint
             $payload['locked'] = $locked;
         }
 
-        return Image::fromArray($this->apiPut($this->path($imageId), $payload)->object('image'));
+        return Image::fromArray($this->apiPut($this->path($imageId), $payload)->requireObject('image'));
     }
 
     /**

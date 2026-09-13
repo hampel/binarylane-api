@@ -12,6 +12,7 @@ use Hampel\BinaryLane\Api\Exception\ActionBlockedException;
 use Hampel\BinaryLane\Api\Exception\ActionFailedException;
 use Hampel\BinaryLane\Api\Exception\ActionTimedOutException;
 use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
+use Hampel\BinaryLane\Api\Exception\MalformedResponseException;
 use Hampel\BinaryLane\Api\Exception\NotFoundException;
 
 final class ActionsTest extends TestCase
@@ -371,6 +372,45 @@ final class ActionsTest extends TestCase
         $this->expectExceptionMessage('positive integer');
 
         $this->binarylane()->actions()->await(Action::fromArray([]));
+    }
+
+    /**
+     * THE ROW THE WRAPPER SESSION CALLED DANGEROUS FOR A POLLER. 0.1.0 classified a
+     * status-less action as still running, so a maintenance page was polled to the deadline
+     * and then reported as a timeout of action #0.
+     *
+     * The envelope check now catches the malformed-response route before it reaches here, so
+     * what this guards is the remaining cause: a status the API has added since this release.
+     */
+    public function testAwaitRaisesOnAStatusItCannotClassifyRatherThanPolling(): void
+    {
+        $waited = [];
+
+        $this->client->pushJson(200, $this->action(7, 'in-progress', ['status' => 'paused-for-review']));
+
+        try {
+            $this->binarylane()->actions()->await(7, timeout: 600, wait: $this->recordingWait($waited));
+
+            $this->fail('expected a MalformedResponseException');
+        } catch (MalformedResponseException $e) {
+            $this->assertStringContainsString('cannot classify', $e->getMessage());
+            $this->assertStringContainsString('"paused-for-review"', $e->getMessage());
+            $this->assertSame([], $waited, 'it must not have waited even once');
+            $this->assertCount(1, $this->client->requests);
+        }
+    }
+
+    /**
+     * The malformed-response route, end to end: an empty 200 from a proxy used to become
+     * action #0 and then a timeout. It is now caught at the envelope.
+     */
+    public function testAnEmptyResponseWhileAwaitingIsMalformedRatherThanATimeout(): void
+    {
+        $this->client->pushRaw(200, '');
+
+        $this->expectException(MalformedResponseException::class);
+
+        $this->binarylane()->actions()->await(7, timeout: 0);
     }
 
     public function testAwaitAllWaitsForEachInTurn(): void

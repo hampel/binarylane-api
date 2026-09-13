@@ -110,6 +110,45 @@ final class ConnectionTest extends TestCase
         $this->assertTrue($response->isEmpty());
     }
 
+    /**
+     * THE 0.1.0 HOLE. `send()` accepted an empty body on any 2xx, so a proxy's empty 200
+     * became an empty ApiResponse and reached the caller as "this account has no servers" -
+     * the exact failure the code three lines below it says it exists to prevent.
+     *
+     * The specification settles it: all 104 of its 200s declare a content schema, and only
+     * 202 and 204 are declared bodiless.
+     */
+    public function testAnEmpty200IsMalformedRatherThanAnEmptyResult(): void
+    {
+        $this->client->pushRaw(200, '');
+
+        $this->expectException(MalformedResponseException::class);
+        $this->expectExceptionMessage('the body was empty');
+
+        $this->connection()->get('servers');
+    }
+
+    public function testAnEmpty200WithAJsonContentTypeIsAlsoMalformed(): void
+    {
+        $this->client->pushRaw(200, '', ['Content-Type' => 'application/json']);
+
+        $this->expectException(MalformedResponseException::class);
+
+        $this->connection()->get('servers');
+    }
+
+    /**
+     * The two the specification really does declare bodiless must keep working.
+     */
+    public function testTheTwoDeliberateBodilessSuccessesStillPass(): void
+    {
+        $this->client->pushRaw(204, '');
+        $this->assertTrue($this->connection()->delete('servers/1')->isEmpty());
+
+        $this->client->pushRaw(202, '');
+        $this->assertTrue($this->connection()->post('servers/1/actions', ['type' => 'power_on'])->isAccepted());
+    }
+
     public function testA200WithAnUndecodableBodyIsAFailureRatherThanAnEmptyList(): void
     {
         $this->client->pushRaw(200, '<html><body>Service Unavailable</body></html>', ['Content-Type' => 'text/html']);

@@ -113,7 +113,7 @@ final class LoadBalancers extends Endpoint
     public function availability(): array
     {
         return Cast::objects(
-            $this->apiGet('load_balancers/availability')->array('load_balancer_availability_options'),
+            $this->apiGet('load_balancers/availability')->requireArray('load_balancer_availability_options'),
             LoadBalancerAvailabilityOption::fromArray(...)
         );
     }
@@ -160,7 +160,7 @@ final class LoadBalancers extends Endpoint
             $payload['health_check'] = $healthCheck->toArray();
         }
 
-        return LoadBalancer::fromArray($this->apiPost('load_balancers', $payload)->object('load_balancer'));
+        return LoadBalancer::fromArray($this->apiPost('load_balancers', $payload)->requireObject('load_balancer'));
     }
 
     /**
@@ -199,7 +199,7 @@ final class LoadBalancers extends Endpoint
             $payload['health_check'] = $healthCheck->toArray();
         }
 
-        return LoadBalancer::fromArray($this->apiPut($this->path($id), $payload)->object('load_balancer'));
+        return LoadBalancer::fromArray($this->apiPut($this->path($id), $payload)->requireObject('load_balancer'));
     }
 
     /**

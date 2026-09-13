@@ -137,7 +137,7 @@ final class Servers extends Endpoint
         $response = $this->apiPost('servers', $request->toArray());
 
         return new CreatedServer(
-            Server::fromArray($response->object('server')),
+            Server::fromArray($response->requireObject('server')),
             Cast::objects(Cast::object($response->value('links'))['actions'] ?? null, ActionLink::fromArray(...)),
         );
     }
@@ -220,7 +220,7 @@ final class Servers extends Endpoint
     public function advancedFirewallRules(int $id): array
     {
         return Cast::objects(
-            $this->apiGet($this->path($id) . '/advanced_firewall_rules')->array('firewall_rules'),
+            $this->apiGet($this->path($id) . '/advanced_firewall_rules')->requireArray('firewall_rules'),
             AdvancedFirewallRule::fromArray(...)
         );
     }
@@ -272,7 +272,7 @@ final class Servers extends Endpoint
     public function uploadBackup(int $id, UploadImage $request): Action
     {
         return Action::fromArray(
-            $this->apiPost($this->path($id) . '/backups', $request->toArray())->object('action')
+            $this->apiPost($this->path($id) . '/backups', $request->toArray())->requireObject('action')
         );
     }
 
@@ -321,7 +321,7 @@ final class Servers extends Endpoint
     public function thresholdAlerts(int $id): array
     {
         return Cast::objects(
-            $this->apiGet($this->path($id) . '/threshold_alerts')->array('threshold_alerts'),
+            $this->apiGet($this->path($id) . '/threshold_alerts')->requireArray('threshold_alerts'),
             ThresholdAlert::fromArray(...)
         );
     }
@@ -338,7 +338,7 @@ final class Servers extends Endpoint
      */
     public function serversWithExceededAlerts(): array
     {
-        return Cast::ints($this->apiGet('servers/threshold_alerts')->array('server_ids'));
+        return Cast::ints($this->apiGet('servers/threshold_alerts')->requireArray('server_ids'));
     }
 
     /**

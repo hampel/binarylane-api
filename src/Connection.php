@@ -227,11 +227,17 @@ final class Connection
                 return new ApiResponse($decoded, $status, $meta);
             }
 
-            // THE TWO BODILESS SUCCESSES THIS API SENDS ON PURPOSE. A 204 is a completed
-            // delete. A 202 is a server action the API took and has not reported on - every
-            // one of the forty-odd action operations declares it, alongside the 200 that
-            // carries the action. Neither is malformed, and neither may be raised as such.
-            if ($status === 204 || $status === 202 || trim($body) === '') {
+            // THE TWO BODILESS SUCCESSES THIS API SENDS ON PURPOSE, AND ONLY THOSE TWO. A
+            // 204 is a completed delete. A 202 is a server action the API took and has not
+            // reported on - every one of the forty-odd action operations declares it,
+            // alongside the 200 that carries the action. Neither is malformed.
+            //
+            // The status list is exhaustive rather than cautious: every one of the 104 200s
+            // in the specification declares a content schema, so an empty 200 is nobody's
+            // documented behaviour. 0.1.0 also accepted `trim($body) === ''` on any status,
+            // which let a proxy's empty 200 through as an empty result - the exact failure
+            // the comment below says this code exists to prevent, three lines above it.
+            if ($status === 204 || $status === 202) {
                 return new ApiResponse([], $status, $meta);
             }
 
