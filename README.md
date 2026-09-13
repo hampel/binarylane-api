@@ -59,7 +59,9 @@ $binarylane = new Client(
 );
 ```
 
-Requests are logged at `debug`, failures at `error`. The token is never logged: `ApiToken`
+Requests are logged at `debug`, and nothing else is. A failure is raised rather than logged, so
+an application that logs what it catches records each one once — and `find()` returning null, or
+`checkRunning()` answering false, records nothing. The token is never logged: `ApiToken`
 keeps it out of `__toString()`, `var_dump()` and stack traces.
 
 ## The three things to know before writing anything

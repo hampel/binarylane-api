@@ -167,11 +167,6 @@ final class Connection
     public function follow(string $uri): ApiResponse
     {
         if (!$this->config->ownsUri($uri)) {
-            $this->logger->error('BinaryLane API returned a link pointing somewhere else', [
-                'uri' => $uri,
-                'expected_host' => $this->config->host(),
-            ]);
-
             throw new RuntimeException(sprintf(
                 'Refusing to follow "%s": the BinaryLane API is configured as %s, and a link '
                     . 'out of a response body is requested with the API token attached.',
@@ -245,13 +240,6 @@ final class Connection
             // a maintenance page, a proxy error document, a truncated body. Read as [] it
             // would reach the caller as "this account has no servers", which is the failure
             // worth being loud about on an API that cancels things.
-            $this->logger->error('BinaryLane API answered success with a body that is not JSON', [
-                'method' => $request->getMethod(),
-                'uri' => (string) $request->getUri(),
-                'status' => $status,
-                'content_type' => $response->getHeaderLine('Content-Type'),
-            ]);
-
             throw MalformedResponseException::forResponse(
                 $request->getMethod(),
                 (string) $request->getUri(),
@@ -259,13 +247,6 @@ final class Connection
                 $body
             );
         }
-
-        $this->logger->error('BinaryLane API error response', [
-            'method' => $request->getMethod(),
-            'uri' => (string) $request->getUri(),
-            'status' => $status,
-            'body' => $decoded ?? $body,
-        ]);
 
         throw ApiException::fromResponse(
             $request->getMethod(),
@@ -277,8 +258,15 @@ final class Connection
     }
 
     /**
-     * Log it, send it, and keep a transport failure distinct from an HTTP status. A PSR-18
-     * client throws only for the former, which is what makes that separation free.
+     * Log it at `debug`, send it, and keep a transport failure distinct from an HTTP status. A
+     * PSR-18 client throws only for the former, which is what makes that separation free.
+     *
+     * NOTHING HERE LOGS A FAILURE, BECAUSE EVERY FAILURE IS RAISED. Whether an exception is a
+     * failure at all is decided by whoever catches it: Endpoint::apiFind() turns a 404 into
+     * null and ServerActions::ask() turns an errored action into an answer, and an `error`
+     * written before the throw would report both as faults. The exception carries the method,
+     * URI, status and body, so a caller that logs it loses nothing. 0.2.0 and earlier logged
+     * some failures at `error` and not others, which made every caught failure log twice.
      *
      * The catch is ClientExceptionInterface and not \Throwable, deliberately. Anything else a
      * client throws is not a transport failure and must not be dressed as one: Laravel's
@@ -301,12 +289,6 @@ final class Connection
         try {
             return $this->client->sendRequest($request);
         } catch (ClientExceptionInterface $e) {
-            $this->logger->error('BinaryLane API request failed', [
-                'method' => $method,
-                'uri' => $uri,
-                'error' => $e->getMessage(),
-            ]);
-
             throw RequestException::for($method, $uri, $e);
         }
     }

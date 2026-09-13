@@ -37,7 +37,8 @@ final class Actions extends Endpoint
     public const COLLECTION = 'actions';
 
     /**
-     * How long await() waits before giving up, when it is not told.
+     * How many seconds await() spends waiting between polls before giving up, when it is not
+     * told. Seconds slept, not elapsed time - see await().
      *
      * TEN MINUTES, WHICH IS NOT LONG ENOUGH FOR EVERYTHING. A power-on is seconds; a rebuild,
      * a region change or a restore from an offsite backup can run far longer than this.
@@ -142,8 +143,12 @@ final class Actions extends Endpoint
      * @param  Action|int  $action  the action, or its id. Passing the action already fetched
      *                              does not save a request: it is re-fetched, because the
      *                              copy in hand is a snapshot from before the wait began
-     * @param  int|null  $timeout  seconds to wait before giving up. Null uses
-     *                             DEFAULT_TIMEOUT; 0 means check once and do not wait
+     * @param  int|null  $timeout  seconds to spend WAITING BETWEEN POLLS before giving up -
+     *                             not elapsed time. The requests themselves are not charged
+     *                             against it, so a slow API cannot eat the budget, and a run
+     *                             takes longer than this by however long its polls took. A
+     *                             test that moves a clock moves nothing; pass `$wait` instead.
+     *                             Null uses DEFAULT_TIMEOUT; 0 means check once and do not wait
      * @param  int|null  $interval  seconds between polls. Null uses DEFAULT_POLL_INTERVAL
      * @param  callable(Action): void|null  $onPoll  called with every action fetched,
      *                                               including the last. For a progress
@@ -195,11 +200,6 @@ final class Actions extends Endpoint
             // With the envelope check in place a malformed response is caught before it gets
             // here; what remains is a status the API has added since this release.
             if ($current->status === null) {
-                $this->logger->error('BinaryLane action has an unclassifiable status', [
-                    'action' => $current->id,
-                    'status' => $current->raw['status'] ?? null,
-                ]);
-
                 throw MalformedResponseException::unusableActionStatus(
                     $current->id,
                     $current->raw['status'] ?? null
@@ -207,12 +207,6 @@ final class Actions extends Endpoint
             }
 
             if ($current->hasFailed()) {
-                $this->logger->error('BinaryLane action failed', [
-                    'action' => $current->id,
-                    'type' => $current->type,
-                    'reason' => $current->reason,
-                ]);
-
                 throw ActionFailedException::for($current);
             }
 
@@ -222,13 +216,6 @@ final class Actions extends Endpoint
 
             // Still in progress - but "in progress" covers two states that will never move.
             if ($current->isBlocked()) {
-                $this->logger->warning('BinaryLane action is blocked', [
-                    'action' => $current->id,
-                    'type' => $current->type,
-                    'interaction' => $current->userInteractionRequired?->interactionType?->value,
-                    'blocking_invoice_id' => $current->blockingInvoiceId,
-                ]);
-
                 throw ActionBlockedException::for($current);
             }
 

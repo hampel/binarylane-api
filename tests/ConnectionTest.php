@@ -159,20 +159,6 @@ final class ConnectionTest extends TestCase
         $this->connection()->get('servers');
     }
 
-    public function testAMalformedResponseIsLogged(): void
-    {
-        $logger = new RecordingLogger();
-        $this->client->pushRaw(200, 'not json');
-
-        try {
-            $this->connection($logger)->get('servers');
-        } catch (MalformedResponseException) {
-            // asserted on below
-        }
-
-        $this->assertNotNull($logger->contextFor('BinaryLane API answered success with a body that is not JSON'));
-    }
-
     /**
      * @param  class-string<\Throwable>  $expected
      */

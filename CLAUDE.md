@@ -146,6 +146,12 @@ client that treated any of them as an error would break on the ordinary case.
   be expressed.
 - **Anything carrying a credential withholds it from `__debugInfo()`** — console URLs, user-data,
   image download links, invoice URLs, the token itself.
+- **A failure is raised, never logged.** Requests are logged at `debug` and that is all.
+  Whether an exception is a failure is decided by whoever catches it, and this package catches
+  some of its own — `apiFind()` turns a 404 into null, `ServerActions::ask()` turns an errored
+  action into an answer — so an `error` written before the throw reports ordinary answers as
+  faults, and makes every failure a consumer logs arrive twice. Every exception carries what
+  its log line did — the request and response, or the action. `LoggingTest` pins this.
 
 ## Testing
 

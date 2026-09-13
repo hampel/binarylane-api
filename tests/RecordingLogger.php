@@ -48,4 +48,23 @@ final class RecordingLogger extends AbstractLogger
 
         return null;
     }
+
+    /**
+     * Every message logged above `debug`, as `level: message` - what would reach an alerting
+     * channel. Empty is the answer the logging contract expects from any failure.
+     *
+     * @return list<string>
+     */
+    public function aboveDebug(): array
+    {
+        $lines = [];
+
+        foreach ($this->records as $record) {
+            if ($record['level'] !== 'debug') {
+                $lines[] = (is_string($record['level']) ? $record['level'] : '?') . ': ' . $record['message'];
+            }
+        }
+
+        return $lines;
+    }
 }
