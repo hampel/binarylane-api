@@ -1,8 +1,8 @@
 CHANGELOG
 =========
 
-Unreleased
-----------
+0.3.0 (2026-09-14)
+------------------
 
 **Breaking in behaviour, though no signature changes:** the client no longer logs a failure it
 raises. An application that relied on it for its only record of API failures now needs to log
