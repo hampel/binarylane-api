@@ -21,7 +21,7 @@ final class ActionTimedOutException extends ActionException
     {
         return new self(
             sprintf(
-                'Gave up waiting for the BinaryLane action #%d (%s) after %d seconds; it is '
+                'Gave up waiting for the BinaryLane action #%d (%s) after %d seconds between polls; it is '
                     . 'still running (%d%% complete) and has not been cancelled.',
                 $action->id,
                 $action->type !== '' ? $action->type : $action->title,

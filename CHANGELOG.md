@@ -1,6 +1,27 @@
 CHANGELOG
 =========
 
+Unreleased
+----------
+
+**Breaking in behaviour, though no signature changes:** the client no longer logs a failure it
+raises. An application that relied on it for its only record of API failures now needs to log
+what it catches.
+
+* nothing is logged above `debug`. 0.2.0 logged rejected requests, transport failures,
+  non-JSON bodies, refused links and failed, blocked or unclassifiable actions at `error` or
+  `warning` before raising them — and did not log a missing envelope key or a timed-out action.
+  An application that logged what it caught therefore recorded most failures twice, and could
+  not skip the logged types without losing the rest
+* `servers()->find()` and the other `find()` methods no longer log `error` when there is
+  nothing to find, and `serverActions()->checkRunning()` and `ask()` no longer log a failed
+  action when the answer is no. Both were ordinary answers reported as faults
+* `loadBalancers()->each()` takes the `name` filter `list()` already had. The specification
+  does not say a name matches only one load balancer, unlike a server hostname
+* `ActionTimedOutException` says its seconds were spent between polls, which is what
+  `Actions::await()`'s `$timeout` has always counted — not elapsed time
+* `ImageDiskDownload::url()` documents that its fallback to the raw URL is a different format
+
 0.2.0 (2026-09-13)
 ------------------
 

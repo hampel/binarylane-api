@@ -41,7 +41,13 @@ final class ImageDiskDownload implements \JsonSerializable
     }
 
     /**
-     * The URL to use unless something cannot decompress.
+     * The compressed URL, or the raw one when there is no compressed one.
+     *
+     * THE TWO ARE DIFFERENT FORMATS, so the fallback changes what arrives. A caller that names
+     * the file after compression, or decompresses it, gets a raw disk image from this whenever
+     * the compressed URL is absent - and finds out only after the whole disk has transferred.
+     * Anything that depends on the format should read `compressedUrl` or `rawUrl` directly
+     * rather than this.
      */
     public function url(): string
     {

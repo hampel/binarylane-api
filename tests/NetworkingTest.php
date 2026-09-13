@@ -340,6 +340,21 @@ final class NetworkingTest extends TestCase
         $this->assertTrue($member->isServer());
     }
 
+    public function testEachLoadBalancerCanBeFilteredByName(): void
+    {
+        // Unlike the server hostname filter, the specification does not say a name matches at
+        // most one, so each() carries the filter list() has.
+        $this->client->pushJson(200, $this->collection([
+            ['id' => 9, 'name' => 'lb01.example.test'],
+            ['id' => 10, 'name' => 'lb01.example.test'],
+        ], 'load_balancers'));
+
+        $found = iterator_to_array($this->binarylane()->loadBalancers()->each(name: 'lb01.example.test'), false);
+
+        $this->assertCount(2, $found);
+        $this->assertStringContainsString('name=lb01.example.test', urldecode($this->sentQuery()));
+    }
+
     public function testServerIdsFiltersTheMembersByType(): void
     {
         $this->client->pushJson(200, $this->collection([

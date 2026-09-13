@@ -58,7 +58,9 @@ final class LoadBalancers extends Endpoint
     /**
      * One page of the account's load balancers.
      *
-     * @param  string|null  $name  restricts the result to the one with this hostname
+     * @param  string|null  $name  restricts the result to load balancers with this name,
+     *                             case-insensitively. Unlike the server hostname filter, the
+     *                             specification does not say at most one matches
      * @return Page<LoadBalancer>
      */
     public function list(int $page = 1, ?int $perPage = null, ?string $name = null): Page
@@ -76,11 +78,18 @@ final class LoadBalancers extends Endpoint
     /**
      * Every load balancer, a page at a time.
      *
+     * @param  string|null  $name  as list()
      * @return \Generator<int, LoadBalancer>
      */
-    public function each(?int $perPage = null): \Generator
+    public function each(?int $perPage = null, ?string $name = null): \Generator
     {
-        return $this->apiEach('load_balancers', self::COLLECTION, LoadBalancer::fromArray(...), $perPage);
+        return $this->apiEach(
+            'load_balancers',
+            self::COLLECTION,
+            LoadBalancer::fromArray(...),
+            $perPage,
+            $name === null ? [] : ['name' => $name]
+        );
     }
 
     public function count(): int
@@ -89,7 +98,10 @@ final class LoadBalancers extends Endpoint
     }
 
     /**
-     * The one with this hostname, or null.
+     * The first load balancer with this name, or null.
+     *
+     * THE FIRST, NOT NECESSARILY THE ONLY. The specification does not say a name is unique, so
+     * where that matters use each() with the name and count what comes back.
      */
     public function findByName(string $name): ?LoadBalancer
     {

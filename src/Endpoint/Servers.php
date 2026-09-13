@@ -84,6 +84,9 @@ final class Servers extends Endpoint
     /**
      * Every server, a page at a time, as far as it is consumed.
      *
+     * NO HOSTNAME FILTER, UNLIKE list(), and not by oversight. That filter matches at most one
+     * server, so there is nothing to page through - findByHostname() is the lookup it amounts to.
+     *
      * @return \Generator<int, Server>
      */
     public function each(?int $perPage = null): \Generator
