@@ -1,8 +1,8 @@
 CHANGELOG
 =========
 
-Unreleased
-----------
+0.4.0 (2026-09-14)
+------------------
 
 **Breaking, hence 0.4.0:** `DomainRecord::$type` is nullable. Code reading `$record->type->value`
 needs `$record->typeName()`, or a null check.
