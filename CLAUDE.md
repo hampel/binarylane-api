@@ -80,9 +80,9 @@ so nothing undeclared can be found.
 ## Following a link out of a response body is an SSRF if you do not check
 
 `Page` walking and any use of `Connection::follow()` request a URL that came out of a response, with
-the account's bearer token attached. `Config::ownsUri()` is why that is safe: **`Connection::request()`
-refuses any URI that does not point at the configured API**, and every request this package makes is
-built there.
+the account's bearer token attached. `Config::ownsUri()` is why that is safe:
+**`Connection::request()` refuses any URI that does not point at the configured API**, and every
+request this package makes is built there.
 
 The check lives in `request()` rather than only in `follow()` because a caller can reach for the
 wrong one: `Config::resolve()` passes an absolute URI through unchanged, so an endpoint that handed
