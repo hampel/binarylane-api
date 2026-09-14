@@ -137,7 +137,8 @@ final class DomainRecords extends Endpoint
      */
     public function create(string $domain, DomainRecord $record): DomainRecord
     {
-        if (!$record->isManageable()) {
+        // A type this package does not know is refused by toArray(), with its own reason.
+        if ($record->type !== null && !$record->isManageable()) {
             throw new InvalidArgumentException(sprintf(
                 'A %s record is maintained by BinaryLane and cannot be created.',
                 $record->type->value
@@ -214,6 +215,14 @@ final class DomainRecords extends Endpoint
      */
     public function upsert(string $domain, DomainRecord $record): DomainRecord
     {
+        if ($record->type === null) {
+            throw new InvalidArgumentException(sprintf(
+                'Cannot upsert a "%s" record: the type is not one this package knows, so there is '
+                    . 'no way to look for the existing one.',
+                $record->typeName()
+            ));
+        }
+
         $existing = $this->matching($domain, $record->type, $record->name);
 
         if (count($existing) > 1) {

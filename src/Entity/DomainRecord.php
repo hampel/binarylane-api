@@ -60,10 +60,15 @@ final class DomainRecord implements \JsonSerializable
     public const MAX_16_BIT = 65535;
 
     /**
+     * @param  DomainRecordType|null  $type  null for a type this package does not know - one
+     *                                       BinaryLane added after this release. Until 0.4.0
+     *                                       such a record read as A, and replacing it sent it
+     *                                       back as an A record. typeName() still says what it
+     *                                       is, and `raw` still holds it
      * @param  array<string, mixed>  $raw
      */
     public function __construct(
-        public readonly DomainRecordType $type,
+        public readonly ?DomainRecordType $type,
         public readonly string $name = '',
         public readonly ?string $data = null,
         public readonly ?int $id = null,
@@ -188,7 +193,7 @@ final class DomainRecord implements \JsonSerializable
     public static function fromArray(array $row): self
     {
         return new self(
-            DomainRecordType::tryFrom(Cast::string($row['type'] ?? null) ?? '') ?? DomainRecordType::A,
+            DomainRecordType::tryFrom(Cast::string($row['type'] ?? null) ?? ''),
             Cast::string($row['name'] ?? null) ?? '',
             Cast::string($row['data'] ?? null),
             Cast::int($row['id'] ?? null),
@@ -212,9 +217,21 @@ final class DomainRecord implements \JsonSerializable
      */
     public function toArray(): array
     {
+        if ($this->type === null) {
+            throw new InvalidArgumentException(sprintf(
+                'This record\'s type, "%s", is not one this package knows, so it cannot be sent '
+                    . 'back without changing it. Update it through DomainRecords::update() with '
+                    . 'an array, which sends only the fields given.',
+                $this->typeName()
+            ));
+        }
+
+        // The name goes through name() here rather than only in the factories, so a record
+        // built with the constructor, or read from another provider's export with fromArray(),
+        // still sends `@` for the apex rather than the empty string the API rejects.
         $payload = [
             'type' => $this->type->value,
-            'name' => $this->name,
+            'name' => self::name($this->name),
             'data' => $this->data,
         ];
 
@@ -295,11 +312,21 @@ final class DomainRecord implements \JsonSerializable
     /**
      * Whether this is a record the zone owner may create and change.
      *
-     * False for the SOA, which every zone has and BinaryLane maintains.
+     * False for the SOA, which every zone has and BinaryLane maintains - and for a type this
+     * package does not know, since nothing about it can be sent safely.
      */
     public function isManageable(): bool
     {
-        return $this->type->isManageable();
+        return $this->type?->isManageable() ?? false;
+    }
+
+    /**
+     * The record type as a string, including one this package does not know - for a report,
+     * where "unknown" says less than the name BinaryLane gave it.
+     */
+    public function typeName(): string
+    {
+        return $this->type->value ?? Cast::string($this->raw['type'] ?? null) ?? '';
     }
 
     /**
@@ -329,7 +356,9 @@ final class DomainRecord implements \JsonSerializable
      */
     public function jsonSerialize(): array
     {
-        return $this->raw !== [] ? $this->raw : $this->toArray();
+        // A record of unknown type has nothing toArray() will send, and json_encode() is no
+        // place to raise it.
+        return $this->raw !== [] || $this->type === null ? $this->raw : $this->toArray();
     }
 
     private function with(

@@ -80,7 +80,7 @@ try {
     $byType = [];
 
     foreach ($all as $record) {
-        $byType[$record->type->value] = ($byType[$record->type->value] ?? 0) + 1;
+        $byType[$record->typeName()] = ($byType[$record->typeName()] ?? 0) + 1;
     }
 
     ksort($byType);
@@ -165,7 +165,7 @@ try {
     foreach ($all as $record) {
         if ($record->isApex() || $record->isWildcard()) {
             $io->values([
-                sprintf('%s %s', $record->type->value, $record->name) => $record->fqdn($zone) . ' -> ' . ($record->data ?? '(none)'),
+                sprintf('%s %s', $record->typeName(), $record->name) => $record->fqdn($zone) . ' -> ' . ($record->data ?? '(none)'),
             ]);
         }
     }

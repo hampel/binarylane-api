@@ -97,6 +97,58 @@ final class DomainRecordsTest extends TestCase
         $this->assertTrue($record->isApex());
     }
 
+    /**
+     * The factories converted an empty name; until 0.4.0 the constructor and fromArray() did
+     * not, so a record ported from another provider's export sent the empty string.
+     */
+    public function testAnEmptyNameIsSentAsTheApexHoweverTheRecordWasBuilt(): void
+    {
+        $constructed = new DomainRecord(DomainRecordType::A, '', '203.0.113.10');
+        $imported = DomainRecord::fromArray(['type' => 'TXT', 'name' => '  ', 'data' => 'v=spf1 -all']);
+
+        $this->assertSame('@', $constructed->toArray()['name']);
+        $this->assertSame('@', $imported->toArray()['name']);
+        $this->assertSame('@', $constructed->toUpdateArray()['name']);
+    }
+
+    /**
+     * Until 0.4.0 a type this package did not know read as A - and replacing such a record
+     * sent it back as one.
+     */
+    public function testAnUnknownRecordTypeIsNullRatherThanA(): void
+    {
+        $record = DomainRecord::fromArray(['id' => 5, 'type' => 'TLSA', 'name' => '_443._tcp', 'data' => '3 1 1 abcd']);
+
+        $this->assertNull($record->type);
+        $this->assertSame('TLSA', $record->typeName());
+        $this->assertFalse($record->isManageable());
+        $this->assertSame('TLSA', $record->jsonSerialize()['type']);
+    }
+
+    public function testARecordOfUnknownTypeCannotBeSentBack(): void
+    {
+        $record = DomainRecord::fromArray(['id' => 5, 'type' => 'TLSA', 'name' => '_443._tcp', 'data' => '3 1 1 abcd']);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('"TLSA"');
+
+        $this->binarylane()->domains()->records('example.com')->replace(5, $record);
+    }
+
+    public function testARecordOfUnknownTypeCannotBeUpserted(): void
+    {
+        $record = DomainRecord::fromArray(['type' => 'TLSA', 'name' => '_443._tcp', 'data' => '3 1 1 abcd']);
+
+        try {
+            $this->binarylane()->records()->upsert('example.com', $record);
+            $this->fail('expected the unknown type to be refused');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('TLSA', $e->getMessage());
+        }
+
+        $this->assertSame([], $this->client->requests);
+    }
+
     public function testTheApexAndWildcardMarkersAreRecognised(): void
     {
         $this->assertTrue(DomainRecord::a(DomainRecord::APEX, '203.0.113.10')->isApex());

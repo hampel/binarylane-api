@@ -1,6 +1,24 @@
 CHANGELOG
 =========
 
+Unreleased
+----------
+
+**Breaking, hence 0.4.0:** `DomainRecord::$type` is nullable. Code reading `$record->type->value`
+needs `$record->typeName()`, or a null check.
+
+* **`ReverseNames::all()` could send the API token to another host.** It walked
+  `links.pages.next` through `get()` rather than `follow()`, and an absolute URI passes through
+  `Config::resolve()` unchanged, so a link naming another host was requested with the token on it.
+  It walks through `follow()` now, and `Connection::request()` — which builds every request —
+  refuses any URI that is not the configured API, whichever method was called
+* `DomainRecord::fromArray()` reads a record type this package does not know as `null`, not as `A`.
+  Such a record could previously be sent back by `replace()` as an A record. `typeName()` answers
+  with the type's name either way; `create()`, `replace()` and `upsert()` refuse an unknown type
+* an empty record name is sent as `@` however the record was built. Only the named constructors and
+  `withName()` converted it, so a record from the constructor or from another provider's export
+  via `fromArray()` sent the empty string
+
 0.3.0 (2026-09-14)
 ------------------
 
