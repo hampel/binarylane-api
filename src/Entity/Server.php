@@ -28,7 +28,9 @@ use Hampel\BinaryLane\Api\Support\Cast;
  *
  * `isUnderMaintenance` IS THE FIELD THAT EXPLAINS OTHERWISE INEXPLICABLE REFUSALS - the
  * specification says most actions are unavailable while it is true. Check it before
- * concluding that a failing power action means something is wrong.
+ * concluding that a failing power action means something is wrong. It has THREE values:
+ * null is "BinaryLane did not check", in the specification's words, and until 0.5.0 it read
+ * as false - "not under maintenance" - which is a claim nobody made. Compare with `=== true`.
  *
  * `passwordChangeSupported` DECIDES WHETHER PasswordReset IS EVEN POSSIBLE, and the image's
  * DistributionInfo::$passwordRecovery decides whether it reboots. Two different questions,
@@ -79,7 +81,7 @@ final class Server implements \JsonSerializable
         public readonly ?string $permalink = null,
         public readonly ?AttachedBackup $attachedBackup = null,
         public readonly ?AdvancedServerFeatures $advancedFeatures = null,
-        public readonly bool $isUnderMaintenance = false,
+        public readonly ?bool $isUnderMaintenance = null,
         public readonly array $raw = [],
     ) {
     }
@@ -118,7 +120,7 @@ final class Server implements \JsonSerializable
             Cast::string($row['permalink'] ?? null),
             Cast::nested($row['attached_backup'] ?? null, AttachedBackup::fromArray(...)),
             Cast::nested($row['advanced_features'] ?? null, AdvancedServerFeatures::fromArray(...)),
-            Cast::bool($row['is_under_maintenance'] ?? null) ?? false,
+            Cast::bool($row['is_under_maintenance'] ?? null),
             $row,
         );
     }
@@ -175,10 +177,13 @@ final class Server implements \JsonSerializable
      * powering on a server that is already on is the API's to refuse. What it catches is the
      * cancelled server, the half-built one and the one under maintenance, which are the three
      * that fail with a 400 about the request rather than about the server.
+     *
+     * A maintenance status BinaryLane did not check does not count against it: this answers
+     * whether anything KNOWN stands in the way.
      */
     public function permitsPowerOn(): bool
     {
-        return ($this->status?->permitsPowerOn() ?? false) && !$this->isUnderMaintenance;
+        return ($this->status?->permitsPowerOn() ?? false) && $this->isUnderMaintenance !== true;
     }
 
     /**
@@ -186,10 +191,13 @@ final class Server implements \JsonSerializable
      *
      * The single check worth making before a scripted action, because the two conditions
      * produce the same unhelpful 400 and neither is the caller's mistake.
+     *
+     * Like permitsPowerOn(), it answers for what is known: a maintenance status BinaryLane did
+     * not check does not make the server unactionable.
      */
     public function isActionable(): bool
     {
-        return !$this->isUnderMaintenance && !($this->status?->isBuilding() ?? false);
+        return $this->isUnderMaintenance !== true && !($this->status?->isBuilding() ?? false);
     }
 
     /**

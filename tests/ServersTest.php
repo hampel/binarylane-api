@@ -158,6 +158,37 @@ final class ServersTest extends TestCase
         $this->assertFalse($server->permitsPowerOn());
     }
 
+    /**
+     * The specification: "If this is null the status was not checked." Until 0.5.0 it read as
+     * false, which says the server is not under maintenance - a claim nobody made.
+     */
+    public function testAMaintenanceStatusThatWasNotCheckedIsNullRatherThanFalse(): void
+    {
+        $this->client
+            ->pushJson(200, ['server' => $this->serverRow(['is_under_maintenance' => null])])
+            ->pushJson(200, ['server' => $this->serverRow(['is_under_maintenance' => false])]);
+
+        $unchecked = $this->binarylane()->servers()->get(1234);
+        $checked = $this->binarylane()->servers()->get(1234);
+
+        $this->assertNull($unchecked->isUnderMaintenance);
+        $this->assertFalse($checked->isUnderMaintenance);
+        $this->assertNull($unchecked->jsonSerialize()['is_under_maintenance']);
+    }
+
+    /**
+     * The predicates answer for what is known, so an unchecked status does not block.
+     */
+    public function testAnUncheckedMaintenanceStatusDoesNotMakeAServerUnactionable(): void
+    {
+        $this->client->pushJson(200, ['server' => $this->serverRow(['is_under_maintenance' => null])]);
+
+        $server = $this->binarylane()->servers()->get(1234);
+
+        $this->assertTrue($server->isActionable());
+        $this->assertTrue($server->permitsPowerOn());
+    }
+
     public function testItSortsTheAddressesByReachabilityRatherThanByFamily(): void
     {
         $this->client->pushJson(200, ['server' => $this->serverRow()]);

@@ -56,7 +56,11 @@ try {
             'permalink' => $server->permalink ?? '(none)',
             'region' => $server->regionSlug() ?? '(none)',
             'status' => ($server->status?->value ?? '(unrecognised)') . ' - a lifecycle state, not a power state',
-            'under maintenance' => $server->isUnderMaintenance ? 'YES - most actions will be refused' : 'no',
+            'under maintenance' => match ($server->isUnderMaintenance) {
+                true => 'YES - most actions will be refused',
+                false => 'no',
+                null => 'not checked by BinaryLane',
+            },
             'actionable' => $server->isActionable() ? 'yes' : 'NO',
             'cancelled' => $server->isCancelled() ? 'YES' : 'no',
             'in a VPC' => $server->isInVpc() ? 'vpc ' . $server->vpcId : 'no',

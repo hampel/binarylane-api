@@ -163,7 +163,7 @@ stopping early stops making requests:
 
 ```php
 foreach ($binarylane->servers()->each() as $server) {
-    if ($server->isUnderMaintenance) {
+    if ($server->isUnderMaintenance === true) {   // null: BinaryLane did not check
         break;                                // no further requests are made
     }
 }
