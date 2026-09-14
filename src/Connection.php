@@ -184,8 +184,7 @@ final class Connection
      *
      * AN ABSOLUTE URI THAT IS NOT THE CONFIGURED API IS REFUSED, HERE, for the reason follow()
      * gives. Every request this package makes is built by this method, so the check cannot be
-     * skipped by a caller that reaches for get() where it should have reached for follow().
-     * One did: ReverseNames::all() passed `links.pages.next` to get() until 0.4.0, and
+     * skipped by a caller that reaches for get() where it should have reached for follow() -
      * Config::resolve() lets an absolute URI through unchanged.
      *
      * @param  array<string, scalar|null>  $query
@@ -246,9 +245,8 @@ final class Connection
             //
             // The status list is exhaustive rather than cautious: every one of the 104 200s
             // in the specification declares a content schema, so an empty 200 is nobody's
-            // documented behaviour. 0.1.0 also accepted `trim($body) === ''` on any status,
-            // which let a proxy's empty 200 through as an empty result - the exact failure
-            // the comment below says this code exists to prevent, three lines above it.
+            // documented behaviour. Accepting an empty body on any other status would let a
+            // proxy's empty 200 through as an empty result - see below.
             if ($status === 204 || $status === 202) {
                 return new ApiResponse([], $status, $meta);
             }
@@ -282,8 +280,7 @@ final class Connection
      * failure at all is decided by whoever catches it: Endpoint::apiFind() turns a 404 into
      * null and ServerActions::ask() turns an errored action into an answer, and an `error`
      * written before the throw would report both as faults. The exception carries the method,
-     * URI, status and body, so a caller that logs it loses nothing. 0.2.0 and earlier logged
-     * some failures at `error` and not others, which made every caught failure log twice.
+     * URI, status and body, so a caller that logs it loses nothing, and logs it once.
      *
      * The catch is ClientExceptionInterface and not \Throwable, deliberately. Anything else a
      * client throws is not a transport failure and must not be dressed as one: Laravel's

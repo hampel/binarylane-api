@@ -861,7 +861,7 @@ final class ServerActions extends Endpoint
         // requireObject() rather than object(): it returns early on a genuinely empty body,
         // so the bodiless 202 still answers null, while a 200 that parsed and lacks `action`
         // raises instead of being mistaken for one. Those two look identical through the
-        // lenient accessor, which is how 0.1.0 reported a proxy's answer as "accepted".
+        // lenient accessor, which would report a proxy's answer as "accepted".
         $action = $response->requireObject('action');
 
         return $action === [] ? null : Action::fromArray($action);

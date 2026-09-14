@@ -17,7 +17,7 @@ use Psr\Http\Message\ResponseInterface;
  * "this account has no servers". Acting on that answer is the accident this type exists to
  * prevent.
  *
- * THREE THINGS REACH HERE, and the second was a hole in 0.1.0:
+ * THREE THINGS REACH HERE:
  *
  *  - a 2xx whose body is not JSON at all, including an EMPTY body on any status but the two
  *    below - see forResponse();

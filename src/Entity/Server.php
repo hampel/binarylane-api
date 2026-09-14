@@ -22,15 +22,15 @@ use Hampel\BinaryLane\Api\Support\Cast;
  * service" - a lifecycle state. The API's own design says the same, by providing a dedicated
  * `is_running` action that would otherwise be redundant.
  *
- * So there is no isRunning() here, deliberately, and there was one until it was found to be
- * lying. Ask ServerActions::isRunning() and await the answer, or accept that you do not know.
- * See ServerStatus.
+ * So there is no isRunning() here, deliberately: it would be a guess. Ask
+ * ServerActions::checkRunning(), which answers false for a stopped server rather than
+ * raising, or accept that you do not know. See ServerStatus.
  *
  * `isUnderMaintenance` IS THE FIELD THAT EXPLAINS OTHERWISE INEXPLICABLE REFUSALS - the
  * specification says most actions are unavailable while it is true. Check it before
  * concluding that a failing power action means something is wrong. It has THREE values:
- * null is "BinaryLane did not check", in the specification's words, and until 0.5.0 it read
- * as false - "not under maintenance" - which is a claim nobody made. Compare with `=== true`.
+ * null is "BinaryLane did not check", in the specification's words, which is not the same as
+ * "not under maintenance". Compare with `=== true`.
  *
  * `passwordChangeSupported` DECIDES WHETHER PasswordReset IS EVEN POSSIBLE, and the image's
  * DistributionInfo::$passwordRecovery decides whether it reboots. Two different questions,

@@ -61,10 +61,10 @@ final class DomainRecord implements \JsonSerializable
 
     /**
      * @param  DomainRecordType|null  $type  null for a type this package does not know - one
-     *                                       BinaryLane added after this release. Until 0.4.0
-     *                                       such a record read as A, and replacing it sent it
-     *                                       back as an A record. typeName() still says what it
-     *                                       is, and `raw` still holds it
+     *                                       BinaryLane added after this release. Read as any
+     *                                       known type, replacing it would send it back as
+     *                                       that type. typeName() still says what it is, and
+     *                                       `raw` still holds it
      * @param  array<string, mixed>  $raw
      */
     public function __construct(

@@ -132,8 +132,8 @@ final class Actions extends Endpoint
      *    Neither resolves by waiting; see the exception.
      *  - ActionTimedOutException - `$timeout` was reached. NOTHING WAS CANCELLED.
      *  - MalformedResponseException - the action's status cannot be classified, so waiting
-     *    longer would only postpone saying so. Added in 0.2.0; 0.1.0 treated such an action as
-     *    still running and polled it until it timed out.
+     *    longer would only postpone saying so. Treated as still running, it would be polled
+     *    until the timeout and reported as one.
      *  - whatever the request itself raised, untouched.
      *
      * THE FIRST CHECK HAPPENS BEFORE THE FIRST SLEEP. An action that is already finished -
