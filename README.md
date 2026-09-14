@@ -64,7 +64,10 @@ an application that logs what it catches records each one once — and `find()` 
 `checkRunning()` answering false, records nothing. The token is never logged: `ApiToken`
 keeps it out of `__toString()`, `var_dump()` and stack traces.
 
-## The three things to know before writing anything
+## Before you start
+
+Three things about this API change how code against it has to be written, and none of them is
+what most API clients lead you to expect.
 
 ### 1. Nearly every mutation answers with an action, not a result
 
