@@ -1,8 +1,9 @@
 vendor/
 composer.lock
+composer.phar
 .idea/
+.DS_Store
 .phpunit.cache/
-.php-cs-fixer.cache
 
 # session notes and audit state - local to this clone, never published
 CLAUDE.local.md
