@@ -1,8 +1,8 @@
 CHANGELOG
 =========
 
-Unreleased
-----------
+0.5.0 (2026-09-14)
+------------------
 
 **Breaking, hence 0.5.0:** `Server::$isUnderMaintenance` is `?bool`. Code testing it for truth
 keeps working; code declaring it `bool` needs a null check.
