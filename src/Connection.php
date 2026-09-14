@@ -182,12 +182,29 @@ final class Connection
      * Build a request without sending it, for a caller assembling something this class does
      * not cover. The credential and the Accept header are already applied.
      *
+     * AN ABSOLUTE URI THAT IS NOT THE CONFIGURED API IS REFUSED, HERE, for the reason follow()
+     * gives. Every request this package makes is built by this method, so the check cannot be
+     * skipped by a caller that reaches for get() where it should have reached for follow().
+     * One did: ReverseNames::all() passed `links.pages.next` to get() until 0.4.0, and
+     * Config::resolve() lets an absolute URI through unchanged.
+     *
      * @param  array<string, scalar|null>  $query
      */
     public function request(string $method, string $path, array $query = []): RequestInterface
     {
+        $uri = $this->config->resolve($path, $query);
+
+        if (!$this->config->ownsUri($uri)) {
+            throw new RuntimeException(sprintf(
+                'Refusing to request "%s": the BinaryLane API is configured as %s, and every '
+                    . 'request carries the API token.',
+                $uri,
+                $this->config->baseUri
+            ));
+        }
+
         $request = $this->requestFactory
-            ->createRequest($method, $this->config->resolve($path, $query))
+            ->createRequest($method, $uri)
             ->withHeader('Accept', self::JSON_CONTENT_TYPE);
 
         return $this->authentication->applyTo($request);

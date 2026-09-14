@@ -348,6 +348,40 @@ final class ConnectionTest extends TestCase
         $this->connection()->follow('https://evil.example/v2/servers?page=2');
     }
 
+    /**
+     * The refusal lives where every request is built, not only in follow(), so a caller that
+     * hands a link to get() instead cannot skip it.
+     */
+    public function testAnAbsoluteUriToAnotherHostIsRefusedByEveryVerb(): void
+    {
+        foreach (['get', 'post', 'put', 'patch', 'delete'] as $verb) {
+            try {
+                $this->connection()->{$verb}('https://evil.example/v2/servers');
+                $this->fail($verb . ' should have refused the foreign URI');
+            } catch (RuntimeException $e) {
+                $this->assertStringContainsString('Refusing to request', $e->getMessage());
+            }
+        }
+
+        $this->assertSame([], $this->client->requests);
+    }
+
+    public function testAnAbsoluteUriToTheConfiguredApiIsAllowed(): void
+    {
+        $this->client->pushJson(200, ['servers' => []]);
+
+        $this->connection()->get('https://api.binarylane.com.au/v2/servers?page=2');
+
+        $this->assertSame('/v2/servers', $this->sentPath());
+    }
+
+    public function testAnAbsoluteUriOverPlainHttpIsRefused(): void
+    {
+        $this->expectException(RuntimeException::class);
+
+        $this->connection()->get('http://api.binarylane.com.au/v2/servers');
+    }
+
     public function testRefusingALinkMakesNoRequest(): void
     {
         try {

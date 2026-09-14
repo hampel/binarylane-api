@@ -317,6 +317,41 @@ final class BillingAndMetricsTest extends TestCase
         $this->assertSame('/v2/reverse_names/ipv6', $this->sentPath());
     }
 
+    public function testTheReverseNameserversAreWalkedAcrossPages(): void
+    {
+        $this->client
+            ->pushJson(200, [
+                'reverse_nameservers' => ['ns1.example.test'],
+                'links' => ['pages' => ['next' => 'https://api.binarylane.com.au/v2/reverse_names/ipv6?page=2']],
+            ])
+            ->pushJson(200, ['reverse_nameservers' => ['ns2.example.test']]);
+
+        $this->assertSame(['ns1.example.test', 'ns2.example.test'], $this->binarylane()->reverseNames()->all());
+        $this->assertCount(2, $this->client->requests);
+    }
+
+    /**
+     * Until 0.4.0 the walk handed `next` to get() rather than follow(), and an absolute URI
+     * passes through Config::resolve() unchanged - so a link naming another host was requested
+     * with the account's token on it.
+     */
+    public function testAReverseNameserverPageLinkToAnotherHostIsNotFollowed(): void
+    {
+        $this->client->pushJson(200, [
+            'reverse_nameservers' => ['ns1.example.test'],
+            'links' => ['pages' => ['next' => 'https://evil.example/v2/reverse_names/ipv6?page=2']],
+        ]);
+
+        try {
+            $this->binarylane()->reverseNames()->all();
+            $this->fail('expected the foreign link to be refused');
+        } catch (\Hampel\BinaryLane\Api\Exception\RuntimeException $e) {
+            $this->assertStringContainsString('evil.example', $e->getMessage());
+        }
+
+        $this->assertCount(1, $this->client->requests);
+    }
+
     /**
      * The API replaces the set, so adding one means reading the others first.
      */

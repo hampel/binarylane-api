@@ -80,8 +80,14 @@ so nothing undeclared can be found.
 ## Following a link out of a response body is an SSRF if you do not check
 
 `Page` walking and any use of `Connection::follow()` request a URL that came out of a response, with
-the account's bearer token attached. `Config::ownsUri()` is why that is safe, and
-`Connection::follow()` refuses anything that does not point at the configured API.
+the account's bearer token attached. `Config::ownsUri()` is why that is safe: **`Connection::request()`
+refuses any URI that does not point at the configured API**, and every request this package makes is
+built there.
+
+The check lives in `request()` rather than only in `follow()` because a caller can reach for the
+wrong one. `ReverseNames::all()` handed `links.pages.next` to `apiGet()` until 0.4.0, and
+`Config::resolve()` passes an absolute URI through unchanged — so a check in `follow()` alone was a
+check that one endpoint skipped. Walk a link with `follow()` anyway; it says what the code means.
 
 Nothing in the specification suggests BinaryLane would ever emit such a link — which is exactly why
 a client that followed anything would never find out. Do not relax this for convenience.

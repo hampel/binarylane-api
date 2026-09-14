@@ -39,13 +39,9 @@ final class ReverseNames extends Endpoint
     public function all(?int $perPage = null): array
     {
         $names = [];
-        $query = $perPage === null ? [] : ['per_page' => $perPage];
-        $uri = 'reverse_names/ipv6';
+        $response = $this->apiGet('reverse_names/ipv6', $perPage === null ? [] : ['per_page' => $perPage]);
 
         while (true) {
-            $response = $this->apiGet($uri, $query);
-            $query = [];
-
             foreach (Cast::strings($response->requireArray(self::COLLECTION)) as $name) {
                 $names[] = $name;
             }
@@ -58,7 +54,9 @@ final class ReverseNames extends Endpoint
                 return $names;
             }
 
-            $uri = $next;
+            // follow(), not get(): the link came out of a response body, and follow() is what
+            // refuses one pointing anywhere but the configured API.
+            $response = $this->connection->follow($next);
         }
     }
 
