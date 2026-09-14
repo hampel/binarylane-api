@@ -7,10 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `hampel/binarylane-api` — a PHP client for the BinaryLane API, written to be usable from any host
 application rather than tied to one HTTP library or framework.
 
-It covers the whole of the published v2 API. A Laravel integration will live in a separate package
-that depends on this one, so **nothing in here may depend on `illuminate/*`** — that boundary is
-the point of the split, and it is what keeps this package usable from an application with no
-Laravel in it at all.
+It covers the whole of the published v2 API. A Laravel integration lives in a separate package,
+`hampel/binarylane-api-laravel`, that depends on this one, so **nothing in here may depend on
+`illuminate/*`** — that boundary is the point of the split, and it is what keeps this package
+usable from an application with no Laravel in it at all.
 
 ## Commands
 
@@ -85,9 +85,9 @@ refuses any URI that does not point at the configured API**, and every request t
 built there.
 
 The check lives in `request()` rather than only in `follow()` because a caller can reach for the
-wrong one. `ReverseNames::all()` handed `links.pages.next` to `apiGet()` until 0.4.0, and
-`Config::resolve()` passes an absolute URI through unchanged — so a check in `follow()` alone was a
-check that one endpoint skipped. Walk a link with `follow()` anyway; it says what the code means.
+wrong one: `Config::resolve()` passes an absolute URI through unchanged, so an endpoint that handed
+a response link to `apiGet()` would otherwise send the token wherever it points. Walk a link with
+`follow()` anyway; it says what the code means.
 
 Nothing in the specification suggests BinaryLane would ever emit such a link — which is exactly why
 a client that followed anything would never find out. Do not relax this for convenience.
@@ -102,9 +102,9 @@ runtime rather than at install. The same reasoning applies to `psr/http-message`
 Neither range is there to be tidied up. Widening or narrowing either is a compatibility decision
 about the applications that actually consume this package.
 
-`ext-filter` is declared because `Entity\Network` uses `filter_var()`. It went undeclared until
-`composer-require-checker` caught it — which is the check that catches a missing extension at all,
-since a function from an absent extension looks exactly like one from core to static analysis.
+`ext-filter` is declared because `Entity\Network` uses `filter_var()`. `composer-require-checker`
+is what keeps extensions declared: a function from an absent extension looks exactly like one from
+core to static analysis.
 
 ## Structure
 
