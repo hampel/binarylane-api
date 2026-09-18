@@ -116,6 +116,13 @@ final class DomainRecord implements \JsonSerializable
      * The target comes first because it is the part you always supply; `name` is the apex for
      * the ordinary case of mail addressed at the domain itself. Lower priority wins.
      *
+     * THE TARGET IS SENT FULLY QUALIFIED, WITH A TRAILING DOT. BinaryLane refuses an MX whose
+     * data does not end in `.` - "data must end with a '.' for MX records" - while other
+     * providers' APIs return the same record without one, so a record copied value for value
+     * is refused. toArray() adds the dot, however the record was built. A single-label target
+     * such as `mail` is refused here instead: in a zone file it means `mail.<zone>`, and adding
+     * a dot would make it the top-level domain `mail.`. Give the full name.
+     *
      * THE PRIORITY HAS NO DEFAULT. An MX set is an ordered list, so no one value is right, and a
      * wrong one fails silently: mail still arrives, tried in an order nobody chose. A caller
      * that does not know the priority does not know the record.
@@ -140,6 +147,9 @@ final class DomainRecord implements \JsonSerializable
 
     /**
      * A text record - SPF, DKIM, DMARC, a domain-verification token.
+     *
+     * A value longer than 255 bytes - a 2048-bit DKIM key - is accepted whole and served
+     * unchanged. There is no need to split it into strings first.
      */
     public static function txt(string $name, string $value): self
     {
@@ -239,7 +249,7 @@ final class DomainRecord implements \JsonSerializable
         $payload = [
             'type' => $this->type->value,
             'name' => self::name($this->name),
-            'data' => $this->data,
+            'data' => $this->type === DomainRecordType::MX ? self::mailServer($this->data) : $this->data,
         ];
 
         if ($this->type->usesPriority() && $this->priority !== null) {
@@ -400,6 +410,38 @@ final class DomainRecord implements \JsonSerializable
         $name = trim($name);
 
         return $name === '' ? self::APEX : $name;
+    }
+
+    /**
+     * An MX target as BinaryLane requires it: fully qualified, ending in a dot.
+     *
+     * Null passes through - toArray() sends what the record holds, and a record without data is
+     * the API's to refuse. See mx() for why a single-label target is refused rather than dotted.
+     */
+    private static function mailServer(?string $target): ?string
+    {
+        if ($target === null) {
+            return null;
+        }
+
+        $target = trim($target);
+
+        if ($target === '' || str_ends_with($target, '.')) {
+            return $target;
+        }
+
+        if (!str_contains($target, '.')) {
+            throw new InvalidArgumentException(sprintf(
+                'The MX target "%s" is a single label. BinaryLane takes a fully qualified name, and '
+                    . 'adding a dot would make it the top-level domain "%s." - give the full name, '
+                    . 'such as "%s.example.com".',
+                $target,
+                $target,
+                $target
+            ));
+        }
+
+        return $target . '.';
     }
 
     private static function required(string $value, string $message): string

@@ -45,7 +45,7 @@ final class DomainRecordsTest extends TestCase
     public function testAnMxRecordCarriesItsPriorityAndNothingElse(): void
     {
         $this->assertSame(
-            ['type' => 'MX', 'name' => '@', 'data' => 'mail.example.com', 'priority' => 10],
+            ['type' => 'MX', 'name' => '@', 'data' => 'mail.example.com.', 'priority' => 10],
             DomainRecord::mx('mail.example.com', 10)->toArray()
         );
     }
@@ -81,6 +81,40 @@ final class DomainRecordsTest extends TestCase
             $required,
             array_values(array_intersect($required, array_map(static fn (\ReflectionParameter $p): string => $p->getName(), $parameters)))
         );
+    }
+
+    /**
+     * BinaryLane answers 400 "data must end with a '.' for MX records", and other providers'
+     * APIs return the same record without the dot - so a record copied value for value was
+     * refused until the dot was added at the wire, however the record was built.
+     */
+    public function testAnMxTargetIsSentFullyQualifiedHoweverTheRecordWasBuilt(): void
+    {
+        $factory = DomainRecord::mx('SMTP.GOOGLE.COM', 1);
+        $imported = DomainRecord::fromArray(['type' => 'MX', 'name' => '', 'data' => 'SMTP.GOOGLE.COM', 'priority' => 1]);
+        $alreadyDotted = DomainRecord::mx('smtp.google.com.', 1);
+
+        $this->assertSame('SMTP.GOOGLE.COM.', $factory->toArray()['data']);
+        $this->assertSame('SMTP.GOOGLE.COM.', $imported->toArray()['data']);
+        $this->assertSame('smtp.google.com.', $alreadyDotted->toArray()['data']);
+        $this->assertSame('SMTP.GOOGLE.COM', $imported->data);
+    }
+
+    public function testASingleLabelMxTargetIsRefusedRatherThanMadeATopLevelDomain(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('single label');
+
+        DomainRecord::mx('mail', 10)->toArray();
+    }
+
+    /**
+     * The rule is measured for MX alone. Whether CNAME, NS or SRV targets need the dot too is
+     * not known, so they are sent as given until it is.
+     */
+    public function testOnlyAnMxTargetGetsTheDot(): void
+    {
+        $this->assertSame('www.example.com', DomainRecord::cname('shop', 'www.example.com')->toArray()['data']);
     }
 
     public function testAnSrvRecordCarriesPortPriorityAndWeight(): void
