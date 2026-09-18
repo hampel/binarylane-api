@@ -140,7 +140,7 @@ try {
 | 403 | `NotPermittedException` | declared on exactly one operation — image download |
 | 404 | `NotFoundException` | also means "belongs to someone else" |
 | 429 | `TooManyRequestsException` | not in the specification; mapped defensively |
-| 5xx | `ServerException` | |
+| 5xx | `ServerException` | a `504` can come from the gateway while the request carries on — re-read before retrying a write |
 | other 4xx | `ClientException` | |
 | 2xx this package cannot act on | `MalformedResponseException` | not JSON, an empty body on any status but 202/204, or a body missing its envelope key — a proxy page read as an empty list is the accident this prevents |
 | never answered | `RequestException` | DNS, TLS, timeout — **the request may still have been carried out**; re-read before retrying a write |

@@ -10,10 +10,11 @@ use Psr\Http\Client\ClientExceptionInterface;
  * The request got no answer: DNS, TLS, a refused connection, or a timeout.
  *
  * NO ANSWER IS NOT "NOT DONE". A timeout can arrive after BinaryLane received the request and
- * carried it out, with only the reply lost - this API has been observed to complete zone
- * creations whose answers never arrived. PSR-18 does not say which side of that line a failure
- * fell on; getPrevious() holds whatever the HTTP client itself knew, and some clients do
- * distinguish a connect timeout from a read timeout.
+ * carried it out, with only the reply lost - a zone creation takes about a minute, and one
+ * whose client gave up at 30 seconds was created anyway. A 504 from the gateway in front of the
+ * API is the same situation arriving as ServerException instead. PSR-18 does not say which
+ * side of that line a failure fell on; getPrevious() holds whatever the HTTP client itself
+ * knew, and some clients do distinguish a connect timeout from a read timeout.
  *
  * So a read can be retried freely, and a write cannot be retried blindly. Find out first:
  * re-read the resource the write would have created or changed, or for a mutation that

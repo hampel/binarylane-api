@@ -63,9 +63,11 @@ Three consequences to keep in mind when changing `Connection`:
 
 - **A PSR-18 client does not throw on an HTTP status.** It throws `ClientExceptionInterface` only
   when no answer arrived. That is what keeps `RequestException` (no answer, outcome unknown)
-  cleanly separate from `ApiException` (BinaryLane answered, and said no). "No answer" is not "not
-  done": a write that timed out may have been carried out, which is why `RequestException` says to
-  re-read before retrying one.
+  cleanly separate from `ApiException` (an answer, which was not a success). "No answer" is not
+  "not done": a write that timed out may have been carried out, which is why `RequestException`
+  says to re-read before retrying one. **A `504` is the same case in the other class** — the
+  gateway in front of the API gives up at 60 seconds, and a zone creation takes about that long
+  and completes behind it.
 - **The catch is `ClientExceptionInterface`, not `\Throwable`.** Laravel's `StrayRequestException`
   is a plain `RuntimeException`, and it reaches a consumer's test naming the URL only because it
   passes through untouched. Widened, it would arrive as "no answer from the BinaryLane API",
@@ -185,11 +187,12 @@ with reality. That is what the harness is for.
 `vendor/bin/rig` runs the exercises in `harness/`. They are not tests: they make real calls and
 print what happened for a person to read.
 
-Four read and change nothing. Two act, and are guarded in three layers:
+Four read and change nothing. Three act, and are guarded in three layers:
 
 | exercise | opt-in, lives in `.env` | agent override, never does |
 |---|---|---|
 | `dns-write` | `BINARYLANE_DNS_WRITE=1` | `BINARYLANE_AGENT_MAY_WRITE_DNS=1` |
+| `dns-zone` | `BINARYLANE_ZONE_WRITE=1` | `BINARYLANE_AGENT_MAY_WRITE_ZONE=1` |
 | `server-action` | `BINARYLANE_RUN_ACTION=1` | `BINARYLANE_AGENT_MAY_RUN_ACTION=1` |
 
 The layers are: the rig withholds `.env` entirely under an agent; each exercise defaults to the

@@ -89,10 +89,15 @@ final class Domains extends Endpoint
      *
      * This does NOT delegate the domain - see the class note.
      *
-     * A TIMEOUT HERE DOES NOT MEAN THE ZONE WAS NOT CREATED. See RequestException: the create
-     * can land with its answer lost. Before retrying, find() the zone. Whether a second create
-     * of an existing zone is refused or answered with the zone is not documented - the
-     * specification declares only a 400 - so a retry that fails is not proof the first failed.
+     * A CREATE TAKES ABOUT A MINUTE, AND FAILING IS NOT PROOF IT DID NOT HAPPEN. Measured on
+     * 2026-09-18: 60.9 seconds, answered with a 504 from BinaryLane's gateway - and the zone
+     * existed. A client timeout shorter than that gets RequestException instead, with the same
+     * outcome. Before concluding anything from either, find() the zone.
+     *
+     * A retry is safe. A second create of a zone that exists is refused at once with a
+     * ValidationException whose `name` error is "Domain name already in use." - it does not
+     * make a second zone, and `$e->concerns('name')` says it was the name. That failure after a
+     * retry means the first attempt landed.
      */
     public function create(string $name, ?string $ipAddress = null): Domain
     {
