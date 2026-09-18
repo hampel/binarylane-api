@@ -92,7 +92,10 @@ final class Domains extends Endpoint
      * A CREATE TAKES ABOUT A MINUTE, AND FAILING IS NOT PROOF IT DID NOT HAPPEN. Measured on
      * 2026-09-18: 60.9 seconds, answered with a 504 from BinaryLane's gateway - and the zone
      * existed. A client timeout shorter than that gets RequestException instead, with the same
-     * outcome. Before concluding anything from either, find() the zone.
+     * outcome. Before concluding anything from either, find() the zone - and treat an empty
+     * find() straight after the failure as unknown too, since the create may still be running.
+     * A zone was already readable 30 seconds in; how early it appears is not measured, so look
+     * again a few seconds later before recording a failure.
      *
      * A retry is safe. A second create of a zone that exists is refused at once with a
      * ValidationException whose `name` error is "Domain name already in use." - it does not
