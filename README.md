@@ -143,7 +143,7 @@ try {
 | 5xx | `ServerException` | |
 | other 4xx | `ClientException` | |
 | 2xx this package cannot act on | `MalformedResponseException` | not JSON, an empty body on any status but 202/204, or a body missing its envelope key — a proxy page read as an empty list is the accident this prevents |
-| never answered | `RequestException` | DNS, TLS, timeout — the only one worth retrying blindly |
+| never answered | `RequestException` | DNS, TLS, timeout — **the request may still have been carried out**; re-read before retrying a write |
 
 An action that fails raises `ActionFailedException`, `ActionBlockedException` or
 `ActionTimedOutException`, none of which are `ApiException` — every request succeeded; the
@@ -314,7 +314,7 @@ Three things differ from most DNS APIs:
 - **the apex is `@`**, not an empty string, and `*` is a wildcard. An empty name is converted
   rather than sent;
 - **the TTL is fixed at 3600** and cannot be chosen — "the default and only supported value",
-  says the specification. None is sent;
+  says the specification. A different value is accepted by the API and ignored, so none is sent;
 - **the update is a `PUT` that retains what it is not given**, with empty string clearing a
   value and null keeping it. That is backwards from the create, so `update()` takes an array
   and passes it through unfiltered:

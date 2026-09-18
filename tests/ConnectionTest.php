@@ -307,14 +307,14 @@ final class ConnectionTest extends TestCase
         ));
 
         $this->expectException(RequestException::class);
-        $this->expectExceptionMessage('Could not reach the BinaryLane API');
+        $this->expectExceptionMessage('whether it was carried out is unknown');
 
         $this->connection()->get('servers');
     }
 
     /**
      * Laravel's StrayRequestException is a plain RuntimeException, and a consumer's test
-     * depends on seeing it rather than "could not reach the API".
+     * depends on seeing it rather than "no answer from the BinaryLane API".
      */
     public function testSomethingThatIsNotATransportFailurePassesThroughUntouched(): void
     {

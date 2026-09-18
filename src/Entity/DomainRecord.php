@@ -32,10 +32,11 @@ use Hampel\BinaryLane\Api\Support\Cast;
  * it does not have to be remembered.
  *
  * THE TTL IS FIXED AT 3600 AND CANNOT BE CHOSEN. The specification is explicit: "The default
- * and only supported value is 3600. Leave null to accept this default." So a record does not
- * carry a TTL decision, and asking for a different one is rejected - which matters for
- * anything that changes DNS shortly before it matters, because an hour is the shortest notice
- * this provider gives.
+ * and only supported value is 3600. Leave null to accept this default." A different value is
+ * not refused: BinaryLane accepts it and applies 3600 anyway. So this class never sends a TTL,
+ * and a `$ttl` given to the constructor - or read from another provider's export - goes
+ * nowhere. That matters for anything that changes DNS shortly before it matters, because an
+ * hour is the shortest notice this provider gives.
  */
 final class DomainRecord implements \JsonSerializable
 {

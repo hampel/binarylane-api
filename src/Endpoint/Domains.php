@@ -88,6 +88,11 @@ final class Domains extends Endpoint
      * the records BinaryLane puts on every zone.
      *
      * This does NOT delegate the domain - see the class note.
+     *
+     * A TIMEOUT HERE DOES NOT MEAN THE ZONE WAS NOT CREATED. See RequestException: the create
+     * can land with its answer lost. Before retrying, find() the zone. Whether a second create
+     * of an existing zone is refused or answered with the zone is not documented - the
+     * specification declares only a 400 - so a retry that fails is not proof the first failed.
      */
     public function create(string $name, ?string $ipAddress = null): Domain
     {

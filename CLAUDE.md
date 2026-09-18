@@ -62,11 +62,13 @@ small adapter instead.
 Three consequences to keep in mind when changing `Connection`:
 
 - **A PSR-18 client does not throw on an HTTP status.** It throws `ClientExceptionInterface` only
-  when the request never completed. That is what keeps `RequestException` (never reached BinaryLane,
-  safe to retry) cleanly separate from `ApiException` (BinaryLane answered, and said no).
+  when no answer arrived. That is what keeps `RequestException` (no answer, outcome unknown)
+  cleanly separate from `ApiException` (BinaryLane answered, and said no). "No answer" is not "not
+  done": a write that timed out may have been carried out, which is why `RequestException` says to
+  re-read before retrying one.
 - **The catch is `ClientExceptionInterface`, not `\Throwable`.** Laravel's `StrayRequestException`
   is a plain `RuntimeException`, and it reaches a consumer's test naming the URL only because it
-  passes through untouched. Widened, it would arrive as "could not reach the BinaryLane API",
+  passes through untouched. Widened, it would arrive as "no answer from the BinaryLane API",
   which is the wrong diagnosis in the one place a wrong diagnosis costs most.
 - **There is no `'json' => $payload` convenience.** The body is encoded and wrapped in a stream
   through the PSR-17 factory by hand. Do not reach for a Guzzle option to avoid it.
