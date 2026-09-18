@@ -54,7 +54,7 @@ function harness_agent_refuses(string $variable): bool
  * withholding the .env, which is layer 1 doing its job. Say so, rather than leaving someone
  * to conclude the package is broken.
  */
-function harness_client(Io $io): Client
+function harness_client(Io $io, int $timeout = 30): Client
 {
     $token = getenv('BINARYLANE_API_TOKEN');
 
@@ -70,7 +70,7 @@ function harness_client(Io $io): Client
 
     $factory = new HttpFactory();
 
-    return Client::withToken($token, new Guzzle(['timeout' => 30]), $factory, $factory);
+    return Client::withToken($token, new Guzzle(['timeout' => $timeout]), $factory, $factory);
 }
 
 /**
