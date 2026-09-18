@@ -20,6 +20,16 @@
  *      of it.
  *   3. Is the apex really `@`? The package turns an empty name into `@` rather than sending
  *      it, which is right if BinaryLane writes names the way BIND does and wrong otherwise.
+ *   4. Which record types need a trailing dot on their target? An MX without one is refused -
+ *      "data must end with a '.' for MX records" - and the package adds it. Whether CNAME, NS
+ *      and SRV behave the same, accept the dotless form as fully qualified, or accept it and
+ *      read it RELATIVE to the zone decides whether the package should add it there too. The
+ *      last is the dangerous one, because it answers 200: so the zone file is read back as
+ *      well, which is where a relative reading shows.
+ *
+ *      ANSWERED on 2026-09-18: MX is refused; SRV is accepted and read relative to the zone
+ *      (`sip.example.com` served as `sip.example.com.<zone>.`); CNAME and NS are read as fully
+ *      qualified. The package adds the dot for MX and SRV.
  *
  * A mocked suite answers all three the way the mock was written, which is the same way the
  * code was written, so they agree with each other and possibly with nothing else.
@@ -36,7 +46,9 @@
 
 use Hampel\BinaryLane\Api\Entity\DomainRecord;
 use Hampel\BinaryLane\Api\Enum\DomainRecordType;
+use Hampel\BinaryLane\Api\Exception\ApiException;
 use Hampel\BinaryLane\Api\Exception\ExceptionInterface;
+use Hampel\BinaryLane\Api\Support\Cast;
 
 require __DIR__ . '/lib/harness.php';
 
@@ -85,6 +97,8 @@ if (!$live) {
 
 $name = harness_probe_name('txt');
 $created = null;
+/** @var list<int> $extraIds records created by step 6, deleted in the finally */
+$extraIds = [];
 $failure = null;
 $leaked = false;
 
@@ -200,6 +214,81 @@ try {
     } else {
         $io->warn('no apex record was visible, so this one is unanswered');
     }
+
+    $io->line();
+    $io->info('6. which record types need a trailing dot on the target?');
+
+    // Posted RAW, through connection(), not through DomainRecord: toArray() adds the dot to an
+    // MX target, so the package could never send the case being asked about. The status and
+    // the stored value are the answer.
+    $path = 'domains/' . rawurlencode($zone) . '/records';
+    $targets = [
+        'CNAME' => ['data' => 'www.example.com'],
+        'MX' => ['data' => 'mail.example.com', 'priority' => 10],
+        'NS' => ['data' => 'ns1.example.com'],
+        'SRV' => ['data' => 'sip.example.com', 'priority' => 10, 'weight' => 5, 'port' => 5060],
+    ];
+    $probeNames = [];
+
+    foreach ($targets as $type => $fields) {
+        $outcome = [];
+
+        foreach (['without dot' => '', 'with dot' => '.'] as $label => $suffix) {
+            $recordName = harness_probe_name(strtolower($type)) . ($suffix === '' ? '-nodot' : '-dot');
+
+            if ($type === 'SRV') {
+                $recordName = '_sip._tcp.' . $recordName;
+            }
+
+            try {
+                $row = $binarylane->connection()
+                    ->post($path, ['type' => $type, 'name' => $recordName] + ['data' => $fields['data'] . $suffix] + $fields)
+                    ->requireObject('domain_record');
+
+                $id = Cast::int($row['id'] ?? null);
+
+                if ($id !== null) {
+                    $extraIds[] = $id;
+                }
+
+                $probeNames[] = $recordName;
+                $outcome[$type . ' ' . $label] = sprintf('accepted, stored "%s"', Cast::string($row['data'] ?? null) ?? '(none)');
+            } catch (ApiException $e) {
+                $outcome[$type . ' ' . $label] = sprintf('REFUSED %d: %s', $e->statusCode, implode(' | ', $e->messages()) ?: $e->getMessage());
+            }
+        }
+
+        $io->values($outcome);
+    }
+
+    $io->line();
+    $io->info('   how the zone file renders each one that was accepted:');
+
+    $zoneFile = $binarylane->domains()->get($zone)->zoneFile;
+    $lines = array_values(array_filter(
+        explode("\n", $zoneFile),
+        static function (string $line) use ($probeNames): bool {
+            foreach ($probeNames as $probeName) {
+                if (str_contains($line, $probeName)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    ));
+
+    foreach ($lines as $line) {
+        $io->line('   ' . trim($line));
+    }
+
+    if ($lines === []) {
+        $io->warn('none of the probe records appear in the zone file - read the list above instead');
+    }
+
+    $io->line();
+    $io->warn('Read the zone file lines: a target shown as www.example.com.' . $zone . '. was read');
+    $io->warn('relative to the zone, and the package must add the dot for that type.');
 } catch (ExceptionInterface|RuntimeException $e) {
     $failure = $e;
 
@@ -208,6 +297,20 @@ try {
     $io->error($e->getMessage());
 } finally {
     $io->line();
+
+    foreach ($extraIds as $extraId) {
+        try {
+            $records->delete($extraId);
+        } catch (ExceptionInterface $cleanup) {
+            $leaked = true;
+
+            $io->error(sprintf('✗ CLEANUP FAILED for record %d in %s - remove it by hand. %s', $extraId, $zone, $cleanup->getMessage()));
+        }
+    }
+
+    if ($extraIds !== [] && !$leaked) {
+        $io->success(sprintf('cleaned up - %d target probe records deleted', count($extraIds)));
+    }
 
     if ($created?->id === null) {
         $io->info('nothing was created, so there is nothing to clean up');
