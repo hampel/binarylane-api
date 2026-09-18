@@ -27,6 +27,12 @@ use Hampel\BinaryLane\Api\Result\Page;
  * the one you mean to end up with.
  *
  * THE TTL IS NOT YOURS TO SET. 3600 is the only value supported - see Entity\DomainRecord.
+ *
+ * A SUCCESS IS NOT PROOF THE RECORD IS THERE. Observed on 2026-09-17 during a migration of 126
+ * zones, all calls sequential: in batches of twenty, between a sixth and three-quarters of the
+ * record creates answered success and did not appear, and re-issuing them worked. Nothing in
+ * the response tells the two apart, so after a batch of writes, read the zone back with all()
+ * and compare against what was meant to be there before treating the batch as done.
  */
 final class DomainRecords extends Endpoint
 {
