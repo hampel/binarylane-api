@@ -115,8 +115,12 @@ final class DomainRecord implements \JsonSerializable
      *
      * The target comes first because it is the part you always supply; `name` is the apex for
      * the ordinary case of mail addressed at the domain itself. Lower priority wins.
+     *
+     * THE PRIORITY HAS NO DEFAULT. An MX set is an ordered list, so no one value is right, and a
+     * wrong one fails silently: mail still arrives, tried in an order nobody chose. A caller
+     * that does not know the priority does not know the record.
      */
-    public static function mx(string $target, int $priority = 10, string $name = self::APEX): self
+    public static function mx(string $target, int $priority, string $name = self::APEX): self
     {
         return new self(
             DomainRecordType::MX,
@@ -149,14 +153,16 @@ final class DomainRecord implements \JsonSerializable
      * compose it from separate service and protocol fields; BinaryLane takes the assembled
      * name, so pass what you want in the zone file.
      *
-     * Lower priority wins; among equal priorities, higher weight is preferred.
+     * Lower priority wins; among equal priorities, higher weight is preferred. Neither has a
+     * default, for the reason mx() gives: both only mean something relative to the other
+     * records of the set.
      */
     public static function srv(
         string $name,
         string $target,
         int $port,
-        int $priority = 0,
-        int $weight = 0,
+        int $priority,
+        int $weight,
     ): self {
         return new self(
             DomainRecordType::SRV,

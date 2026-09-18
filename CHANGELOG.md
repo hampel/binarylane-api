@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+**Breaking:** `DomainRecord::mx()` requires a priority, and `DomainRecord::srv()` a priority and a
+weight.
+
+- `DomainRecord::mx()` `$priority` has no default; it was `10`
+- `DomainRecord::srv()` `$priority` and `$weight` have no default; they were `0`
+- `RequestException`'s message says the outcome of the request is unknown
+
 ## 0.5.0 (2026-09-14)
 
 **Breaking:** `Server::$isUnderMaintenance` is `?bool`.

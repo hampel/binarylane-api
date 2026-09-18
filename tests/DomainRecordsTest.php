@@ -50,6 +50,39 @@ final class DomainRecordsTest extends TestCase
         );
     }
 
+    /**
+     * An MX set and an SRV set are ordered lists, so there is no right default and a wrong one
+     * fails silently. Until 0.6.0 mx() defaulted to 10 and srv() to 0 - different from each
+     * other, and from other providers' clients.
+     *
+     * @return iterable<string, array{string, list<string>}>
+     */
+    public static function orderingParameters(): iterable
+    {
+        yield 'mx' => ['mx', ['priority']];
+        yield 'srv' => ['srv', ['priority', 'weight']];
+    }
+
+    /**
+     * @param  list<string>  $required
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('orderingParameters')]
+    public function testTheOrderingOfARecordSetHasNoDefault(string $factory, array $required): void
+    {
+        $parameters = (new \ReflectionMethod(DomainRecord::class, $factory))->getParameters();
+
+        foreach ($parameters as $parameter) {
+            if (in_array($parameter->getName(), $required, true)) {
+                $this->assertFalse($parameter->isOptional(), $factory . '() $' . $parameter->getName() . ' has a default');
+            }
+        }
+
+        $this->assertSame(
+            $required,
+            array_values(array_intersect($required, array_map(static fn (\ReflectionParameter $p): string => $p->getName(), $parameters)))
+        );
+    }
+
     public function testAnSrvRecordCarriesPortPriorityAndWeight(): void
     {
         $this->assertSame(
