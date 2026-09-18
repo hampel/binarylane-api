@@ -109,12 +109,30 @@ final class DomainRecordsTest extends TestCase
     }
 
     /**
-     * The rule is measured for MX alone. Whether CNAME, NS or SRV targets need the dot too is
-     * not known, so they are sent as given until it is.
+     * Measured: a dotless SRV target is accepted and read RELATIVE to the zone - a 200 for a
+     * record pointing somewhere nobody meant.
      */
-    public function testOnlyAnMxTargetGetsTheDot(): void
+    public function testAnSrvTargetIsSentFullyQualified(): void
+    {
+        $this->assertSame(
+            'sip.example.com.',
+            DomainRecord::srv('_sip._tcp', 'sip.example.com', port: 5060, priority: 10, weight: 5)->toArray()['data']
+        );
+        $this->assertSame(
+            'sip.example.com.',
+            DomainRecord::fromArray(['type' => 'SRV', 'name' => '_sip._tcp', 'data' => 'sip.example.com', 'port' => 5060, 'priority' => 1, 'weight' => 1])->toArray()['data']
+        );
+        $this->assertSame('.', DomainRecord::srv('_sip._tcp', '.', port: 0, priority: 0, weight: 0)->toArray()['data']);
+    }
+
+    /**
+     * Measured: CNAME and NS targets without the dot are read as fully qualified, so they are
+     * sent as given rather than rewritten for nothing.
+     */
+    public function testCnameAndNsTargetsAreSentAsGiven(): void
     {
         $this->assertSame('www.example.com', DomainRecord::cname('shop', 'www.example.com')->toArray()['data']);
+        $this->assertSame('ns1.example.com', DomainRecord::ns('ns1.example.com', 'sub')->toArray()['data']);
     }
 
     public function testAnSrvRecordCarriesPortPriorityAndWeight(): void
@@ -123,7 +141,7 @@ final class DomainRecordsTest extends TestCase
             [
                 'type' => 'SRV',
                 'name' => '_sip._tcp',
-                'data' => 'sip.example.com',
+                'data' => 'sip.example.com.',
                 'priority' => 10,
                 'port' => 5060,
                 'weight' => 5,

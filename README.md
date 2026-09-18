@@ -313,8 +313,10 @@ Four things differ from most DNS APIs:
 
 - **the apex is `@`**, not an empty string, and `*` is a wildcard. An empty name is converted
   rather than sent;
-- **an MX target ends in a dot** — `mail.example.com.` — and the API refuses one without. The
-  dot is added when the record is sent, however it was built; a single-label target is refused;
+- **an MX or SRV target ends in a dot** — `mail.example.com.` An MX without one is refused; an
+  SRV without one is accepted and read relative to the zone, so `sip.example.com` would point at
+  `sip.example.com.<zone>.` The dot is added when the record is sent, however it was built, and a
+  single-label target is refused. CNAME and NS targets are read as full names either way;
 - **the TTL is fixed at 3600** and cannot be chosen — "the default and only supported value",
   says the specification. A different value is accepted by the API and ignored, so none is sent;
 - **the update is a `PUT` that retains what it is not given**, with empty string clearing a

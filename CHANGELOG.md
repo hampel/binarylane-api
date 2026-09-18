@@ -8,8 +8,8 @@ weight.
 - `DomainRecord::mx()` `$priority` has no default; it was `10`
 - `DomainRecord::srv()` `$priority` and `$weight` have no default; they were `0`
 - `RequestException`'s message says the outcome of the request is unknown
-- an MX target is sent with a trailing dot, which the API requires; a single-label MX target
-  raises `InvalidArgumentException`
+- an MX or SRV target is sent with a trailing dot; a single-label MX or SRV target raises
+  `InvalidArgumentException`
 
 ## 0.5.0 (2026-09-14)
 

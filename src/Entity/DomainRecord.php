@@ -163,6 +163,12 @@ final class DomainRecord implements \JsonSerializable
      * compose it from separate service and protocol fields; BinaryLane takes the assembled
      * name, so pass what you want in the zone file.
      *
+     * THE TARGET IS SENT FULLY QUALIFIED, WITH A TRAILING DOT - and here that is not tidiness.
+     * BinaryLane accepts an SRV target without the dot and reads it RELATIVE TO THE ZONE:
+     * `sip.example.com` in example.net is served as `sip.example.com.example.net.`, with a 200
+     * and nothing to say so. toArray() adds the dot; a single-label target is refused, as for
+     * mx(). The RFC 2782 target `.` - "no such service here" - already ends in one.
+     *
      * Lower priority wins; among equal priorities, higher weight is preferred. Neither has a
      * default, for the reason mx() gives: both only mean something relative to the other
      * records of the set.
@@ -249,7 +255,9 @@ final class DomainRecord implements \JsonSerializable
         $payload = [
             'type' => $this->type->value,
             'name' => self::name($this->name),
-            'data' => $this->type === DomainRecordType::MX ? self::mailServer($this->data) : $this->data,
+            'data' => $this->type === DomainRecordType::MX || $this->type === DomainRecordType::SRV
+                ? self::fullyQualified($this->type, $this->data)
+                : $this->data,
         ];
 
         if ($this->type->usesPriority() && $this->priority !== null) {
@@ -413,12 +421,17 @@ final class DomainRecord implements \JsonSerializable
     }
 
     /**
-     * An MX target as BinaryLane requires it: fully qualified, ending in a dot.
+     * An MX or SRV target as it has to be sent: fully qualified, ending in a dot.
+     *
+     * Measured on 2026-09-18, one record of each target-bearing type created without the dot:
+     * MX is refused with a 400, SRV is ACCEPTED AND READ RELATIVE TO THE ZONE -
+     * `sip.example.com` served as `sip.example.com.<zone>.`, with a 200 - and CNAME and NS are
+     * read as fully qualified either way, so they are sent as given.
      *
      * Null passes through - toArray() sends what the record holds, and a record without data is
-     * the API's to refuse. See mx() for why a single-label target is refused rather than dotted.
+     * the API's to refuse. A single-label target is refused rather than dotted: see mx().
      */
-    private static function mailServer(?string $target): ?string
+    private static function fullyQualified(DomainRecordType $type, ?string $target): ?string
     {
         if ($target === null) {
             return null;
@@ -432,9 +445,10 @@ final class DomainRecord implements \JsonSerializable
 
         if (!str_contains($target, '.')) {
             throw new InvalidArgumentException(sprintf(
-                'The MX target "%s" is a single label. BinaryLane takes a fully qualified name, and '
+                'The %s target "%s" is a single label. BinaryLane takes a fully qualified name, and '
                     . 'adding a dot would make it the top-level domain "%s." - give the full name, '
                     . 'such as "%s.example.com".',
+                $type->value,
                 $target,
                 $target,
                 $target
