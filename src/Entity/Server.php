@@ -153,6 +153,10 @@ final class Server implements \JsonSerializable
      * Answered from `cancelledAt` as well as the status, because the two arrive at different
      * times: a server cancelled with a future effective date has the timestamp before it has
      * the `archive` status.
+     *
+     * A FALSE IS NOT PROOF THE SERVER WAS NEVER CANCELLED. The specification says a cancelled
+     * post-paid server is no longer returned by the API, so that case cannot be read from a
+     * payload at all - it is the 404 from Endpoint\Servers::get().
      */
     public function isCancelled(): bool
     {

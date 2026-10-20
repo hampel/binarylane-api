@@ -131,8 +131,8 @@ final class ServersTest extends TestCase
     }
 
     /**
-     * `archive` is also powered off, and cannot be powered back on until the cancellation is
-     * reverted.
+     * `archive` is also powered off, and cannot be powered back on. Reverting the cancellation
+     * is the only route, and it is open to a pre-paid server only.
      */
     public function testACancelledServerCannotSimplyBePoweredOn(): void
     {

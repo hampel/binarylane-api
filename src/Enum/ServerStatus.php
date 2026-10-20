@@ -35,7 +35,15 @@ enum ServerStatus: string
     /** In service. NOT a statement that the server is powered on - see the class note. */
     case Active = 'active';
 
-    /** Powered off because of cancellation or non-payment - see the Uncancel action. */
+    /**
+     * Powered off for non-payment.
+     *
+     * The specification described this as cancellation OR non-payment until it was corrected
+     * to non-payment alone, at the same time as it began saying that a cancelled post-paid
+     * server is not returned by the API at all. What status a cancelled PRE-PAID server
+     * reports is now undocumented; `cancelled_at` is the field that answers it either way,
+     * which is why Entity\Server::isCancelled() reads both.
+     */
     case Archive = 'archive';
 
     /**
@@ -65,10 +73,11 @@ enum ServerStatus: string
     }
 
     /**
-     * Whether the server has been taken out of service for cancellation or non-payment.
+     * Whether the server has been taken out of service.
      *
      * The one status that genuinely means the server is stopped and will not answer a
-     * power-on until the cancellation is reverted.
+     * power-on. Entity\Server::isCancelled() is the broader question, because a cancellation
+     * carries a date before it carries a status.
      */
     public function isArchived(): bool
     {

@@ -148,13 +148,20 @@ final class Servers extends Endpoint
     /**
      * Cancel a server.
      *
-     * A CANCELLATION, NOT A DELETION, and the difference is recoverable: the server moves to
-     * `archive`, stops, and stays that way. The Uncancel action reverses it - see
-     * ServerActions::uncancel().
+     * TREAT THIS AS FINAL. The specification says a cancellation is reversible for one kind of
+     * server and irreversible for the other: a post-paid (hourly-billed) server is gone and is
+     * no longer returned by the API at all, while a pre-paid one may be restored with
+     * ServerActions::uncancel() until it is suspended - with no guarantee even then.
+     *
+     * NOTHING IN THE API SAYS WHICH KIND A SERVER IS. The Server payload carries no billing
+     * field, and every Size quotes an hourly and a monthly price, so a caller cannot tell from
+     * a response whether this call can be taken back. That is what makes the cautious reading
+     * the only safe one.
      *
      * ANSWERS 204 WITH NOTHING. No action comes back, so there is nothing to await and no
      * record of the cancellation in the action list. Re-reading the server is the only
-     * confirmation there is.
+     * confirmation there is - and for a post-paid server that read is a 404, which is the
+     * cancellation having worked rather than having failed.
      *
      * @param  string|null  $reason  recorded against the cancellation. At most 250 characters
      */

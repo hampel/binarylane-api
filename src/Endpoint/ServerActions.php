@@ -50,7 +50,8 @@ final class ServerActions extends Endpoint
     /**
      * Power a server on. For a server that was powered off, from inside or by an action.
      *
-     * A CANCELLED SERVER WILL NOT POWER ON - it is in `archive` and needs uncancel() first.
+     * A CANCELLED SERVER WILL NOT POWER ON - it needs uncancel() first, which only a pre-paid
+     * server can be given.
      */
     public function powerOn(int $serverId): ?Action
     {
@@ -262,7 +263,14 @@ final class ServerActions extends Endpoint
     }
 
     /**
-     * Revert a cancellation, bringing an `archive` server back.
+     * Revert a cancellation.
+     *
+     * ONLY A PRE-PAID SERVER CAN BE BROUGHT BACK, and only before it is suspended. The
+     * specification makes no guarantee even then. A post-paid (hourly-billed) server is not
+     * returned by the API once cancelled, so this raises NotFoundException for the case where
+     * a caller most wants it to work.
+     *
+     * Nothing in a response says which kind of server this is - see Servers::cancel().
      */
     public function uncancel(int $serverId): ?Action
     {
