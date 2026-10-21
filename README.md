@@ -194,7 +194,8 @@ $server->selectedSizeOptions?->memory;        // what THIS server has, in MB
 
 **`status` does not tell you whether a server is powered on.** A server that was genuinely off
 reported `active`, exactly as its running neighbours did, and nothing else in the payload
-carries a power state. That is why there is no `isRunning()` on `Server` — there was one, and
+carries a power state. BinaryLane's specification now says so too: `off` is not currently
+returned. That is why there is no `isRunning()` on `Server` — there was one, and
 it was wrong on precisely the server it mattered for. Ask the API instead:
 
 ```php
@@ -203,8 +204,8 @@ $binarylane->serverActions()->checkUptime(1234);      // "0 days,  0:02", or nul
 ```
 
 **A question-shaped action answers by completing or erroring, not in its payload.** Measured
-both ways: `is_running` completes with a *null* `result_data` when the server is up and errors
-when it is down. Since `await()` raises on an errored action, asking the obvious way throws
+both ways, and since documented by BinaryLane: `is_running` completes with a *null*
+`result_data` when the server is up and errors when it is down. Since `await()` raises on an errored action, asking the obvious way throws
 when the answer is simply "no" — which is what `checkRunning()` and `ask()` exist to avoid.
 
 ```php

@@ -19,8 +19,8 @@ use Hampel\BinaryLane\Api\Support\Cast;
  * `status` DOES NOT TELL YOU WHETHER THE SERVER IS POWERED ON. Measured on 13 September 2026:
  * a server that was powered off reported `active`, exactly as its running neighbours did, and
  * no other field in this payload carries a power state. `active` means "provisioned and in
- * service" - a lifecycle state. The API's own design says the same, by providing a dedicated
- * `is_running` action that would otherwise be redundant.
+ * service" - a lifecycle state. The specification has said the same since 0.45.0: a
+ * powered-off server "is reported as `active`", and the `is_running` action is the way to ask.
  *
  * So there is no isRunning() here, deliberately: it would be a guess. Ask
  * ServerActions::checkRunning(), which answers false for a stopped server rather than
@@ -140,7 +140,7 @@ final class Server implements \JsonSerializable
      * Whether the API is explicitly reporting the server as powered off.
      *
      * TRUE IS RELIABLE; FALSE IS NOT, because a server that is off may report `active`.
-     * ServerActions::isRunning() is the only question that gets a real answer.
+     * ServerActions::checkRunning() is the only question that gets a real answer.
      */
     public function isExplicitlyPoweredOff(): bool
     {

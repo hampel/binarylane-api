@@ -202,8 +202,10 @@ final class ServerActions extends Endpoint
      * Is this server powered on?
      *
      * THE QUESTION `Server::$status` CANNOT ANSWER. A server that is powered off reports
-     * `active` like every other - measured - so this action is the only route to the truth,
-     * and it costs a poll or two rather than a field read.
+     * `active` like every other - measured, and stated by the specification since 0.45.0 - so
+     * this action is the only route to the truth, and it costs a poll or two rather than a
+     * field read. The specification also documents the shape of the answer: the action
+     * completes if the server is running and errors if it is not.
      *
      * True when the action completed, false when it errored. Raises only for a blocked action
      * or a timeout.

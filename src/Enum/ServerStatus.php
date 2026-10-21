@@ -12,15 +12,14 @@ namespace Hampel\BinaryLane\Api\Enum;
  * that were running. No other field in the server payload carries a power state either.
  *
  * So `active` means "provisioned, paid for, in service" - a lifecycle state - and says nothing
- * about whether the operating system is up. The API's own design agrees: there is a dedicated
- * `is_running` SERVER ACTION, which would be redundant if this field answered the question.
- * `Endpoint\ServerActions::isRunning()` is how you actually find out, and like every action it
- * answers asynchronously.
+ * about whether the operating system is up. `Endpoint\ServerActions::checkRunning()` is how
+ * you actually find out, and like every action it answers asynchronously.
  *
- * WHEN `off` APPEARS IS NOT KNOWN. The specification documents it as "the server has been
- * powered off, but may be powered back on", and it was not observed on a server that was in
- * exactly that condition. It may be reserved for a power-off performed through the API rather
- * than from inside the guest. Treat its ABSENCE as meaningless and its PRESENCE as reliable.
+ * `off` IS NOT CURRENTLY RETURNED. The specification has said so since 0.45.0, in as many
+ * words: a powered-off server "is reported as `active`", and the `is_running` server action
+ * is the way to ask. That confirms the measurement above rather than adding to it. The case
+ * stays because the specification still lists the value, so a server reporting it would be
+ * read rather than refused - and a server that DOES report `off` is off.
  *
  * BEWARE OF `off` IF YOU GENERATE ANYTHING FROM THE SPECIFICATION YOURSELF. The published
  * `openapi.yaml` lists this enum as `[new, active, archive, off]`, and a YAML 1.1 parser -
@@ -49,8 +48,8 @@ enum ServerStatus: string
     /**
      * Powered off, and can be powered back on.
      *
-     * Documented by the specification and not observed in practice on a server that was
-     * genuinely off. Do not infer anything from its absence.
+     * Listed by the specification and, by its own account, not currently returned - a
+     * powered-off server reports `active`. Do not infer anything from its absence.
      */
     case Off = 'off';
 
@@ -89,7 +88,7 @@ enum ServerStatus: string
      *
      * TRUE IS RELIABLE; FALSE IS NOT. A server that is powered off may report `active`
      * instead - see the class note - so this answers "did the API say so", not "is it off".
-     * Ask ServerActions::isRunning() when the answer matters.
+     * Ask ServerActions::checkRunning() when the answer matters.
      */
     public function isExplicitlyPoweredOff(): bool
     {
