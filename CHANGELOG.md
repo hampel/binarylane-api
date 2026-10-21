@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+Read against BinaryLane's specification 0.45.0.
+
+- `ImageOptions::validateAgainst()` accepts an empty `user_data` for an image without
+  user-data support; on a rebuild an empty string clears the server's user-data
+- `Servers::cancel()` and `ServerActions::uncancel()` document that cancelling a post-paid
+  server is final, and that only a pre-paid server can be uncancelled
+- `ServerStatus` documents that `off` is not currently returned, and `archive` as non-payment
+- `cloneUsingBackup()` documents that the target must be `active`
+- documented: at most two temporary backups per server in seven days; backup schedules in
+  Australia/Sydney time; unique SSH key names and fingerprints; duplicate reverse nameservers
+  rejected; `SizeOptions` maxima on a server's own size; units in the README
+
 ## 0.6.0 (2026-09-18)
 
 **Breaking:** `DomainRecord::mx()` requires a priority, and `DomainRecord::srv()` a priority and a
