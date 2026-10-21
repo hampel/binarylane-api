@@ -18,7 +18,8 @@ use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
  *  - no password: one is generated and EMAILED TO THE ACCOUNT, not returned;
  *  - no SSH keys: every key marked as default on the account is deployed. An EMPTY ARRAY
  *    deploys none, which is a different thing - withoutSshKeys() sends that;
- *  - no user-data: none is applied.
+ *  - no user-data: the server's EXISTING user-data is kept, where the image supports it. An
+ *    EMPTY STRING clears it, which is a different thing - withUserData('') sends that.
  *
  * A REBUILD DISCARDS THE SERVER'S DISKS, so these are not adjustments to a running server:
  * they are how the replacement is built. Whatever was configured inside the old one is gone.
@@ -93,6 +94,11 @@ final class ImageOptions implements \JsonSerializable
 
     /**
      * cloud-init user-data. Only for an image that supports it; at most 64 KiB.
+     *
+     * AN EMPTY STRING CLEARS the server's existing user-data, where not calling this keeps it -
+     * the specification's own distinction, and unlike a create, where `user_data` is null or a
+     * value. An empty string is also the one value allowed for an image without user-data
+     * support, so validateAgainst() accepts it there.
      */
     public function withUserData(#[\SensitiveParameter] string $userData): self
     {
@@ -118,10 +124,10 @@ final class ImageOptions implements \JsonSerializable
             return $this;
         }
 
-        if (isset($this->options['user_data']) && !$info->supportsUserData()) {
+        if (($this->options['user_data'] ?? '') !== '' && !$info->supportsUserData()) {
             throw new InvalidArgumentException(sprintf(
                 'The image "%s" does not support user-data, and the specification requires the '
-                    . 'field to be null for such an image.',
+                    . 'field to be null or empty for such an image.',
                 $image->describe()
             ));
         }
