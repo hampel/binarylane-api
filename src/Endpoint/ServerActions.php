@@ -498,7 +498,8 @@ final class ServerActions extends Endpoint
      * no confirmation. Getting these the wrong way round destroys the wrong machine.
      *
      * The target must have finished building: the specification says this fails unless the
-     * target server is available.
+     * target's status is `active`, which ServerStatus::isInService() answers. A target still
+     * `new` is refused.
      *
      * @param  int  $serverId  the SOURCE - whose backup is being used
      * @param  int  $backupId  the image id of the backup
