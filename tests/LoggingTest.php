@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hampel\BinaryLane\Api\Tests;
 
+use Hampel\BinaryLane\Api\Authentication\ApiToken;
 use Hampel\BinaryLane\Api\Exception\ActionBlockedException;
 use Hampel\BinaryLane\Api\Exception\ActionFailedException;
 use Hampel\BinaryLane\Api\Exception\ActionTimedOutException;
@@ -177,6 +178,38 @@ final class LoggingTest extends TestCase
         $this->binarylane(logger: $this->logger)->servers()->find(999);
 
         $this->assertNotNull($this->logger->contextFor('BinaryLane API request'));
+    }
+
+    /**
+     * The debug line carries the method and the URI, and nothing else.
+     *
+     * A token is a header and a password is a body field, so neither is in the URI - and
+     * adding the headers or the body to the context "to make debugging easier" would put an
+     * unscoped, non-expiring credential into whatever log store the consumer runs at `debug`.
+     * Asserted against everything the logger recorded rather than against one key, so the
+     * test fails whatever shape the leak takes.
+     */
+    public function testTheDebugLineCarriesNoTokenAndNoBody(): void
+    {
+        $token = 'test-token-must-not-be-logged-7f3a';
+        $password = 'hunter2-must-not-be-logged';
+
+        $this->client->pushJson(200, $this->action(overrides: ['type' => 'password_reset']));
+
+        $this->binarylane(logger: $this->logger, authentication: new ApiToken($token))
+            ->serverActions()
+            ->passwordReset(1234, 'root', $password);
+
+        // Both secrets really were in the request, so their absence below means something.
+        $this->assertStringContainsString($token, $this->client->lastRequest()->getHeaderLine('Authorization'));
+        $this->assertSame($password, $this->sentBody()['password'] ?? null);
+
+        $this->assertSame(['method', 'uri'], array_keys($this->logger->contextFor('BinaryLane API request') ?? []));
+
+        $recorded = print_r($this->logger->records, true);
+
+        $this->assertStringNotContainsString($token, $recorded);
+        $this->assertStringNotContainsString($password, $recorded);
     }
 
     public function testNotFoundIsStillRaisedByGet(): void
