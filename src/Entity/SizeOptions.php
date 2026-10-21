@@ -18,6 +18,12 @@ use Hampel\BinaryLane\Api\Support\Cast;
  * range is still true and no longer sufficient, so a disk size validated against the range
  * alone is rejected with a 400. allowsDisk() applies both rules.
  *
+ * ON A SERVER'S OWN CURRENT SIZE, THE MAXIMA CAN BE THE SERVER'S, not the plan's. Where the
+ * server's current disk, memory or transfer is no longer one the size offers, `diskMax`,
+ * `memoryMax` and `transferMax` report the server's value instead, and `restrictedDiskValues`
+ * includes its current disk - which is what lets a resize keep what the server already has.
+ * It is not a sign the plan offers that much to anyone else.
+ *
  * `discountForNoPublicIpv4` is a saving rather than a charge: a server created with no public
  * IPv4 address costs that much less per month.
  */

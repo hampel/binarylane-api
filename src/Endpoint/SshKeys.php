@@ -103,6 +103,10 @@ final class SshKeys extends Endpoint
      * user@host`, not just the base64 body.
      *
      * `$default` deploys it to every future server created without an explicit key list.
+     *
+     * BOTH MUST BE NEW TO THE ACCOUNT: the name must be unique among its keys, and a key with
+     * the same fingerprint must not already be there. Re-adding a key that exists is refused
+     * rather than answered with the existing one.
      */
     public function create(string $publicKey, string $name, bool $default = false): SshKey
     {
@@ -131,6 +135,8 @@ final class SshKeys extends Endpoint
      *
      * THE NAME IS REQUIRED EVEN WHEN ONLY THE DEFAULT FLAG IS CHANGING - the specification
      * marks it so. `$default` left null keeps the key's current status.
+     *
+     * The name must be unique among the account's keys.
      *
      * THE PUBLIC KEY CANNOT BE CHANGED. There is no field for it: replacing a key means
      * adding the new one and deleting the old.

@@ -420,6 +420,9 @@ final class ServerActions extends Endpoint
      *
      * Three of the four ways to build the request destroy an existing backup when the slot is
      * full; `TakeBackup::intoFreeSlot()` is the one that fails instead.
+     *
+     * AT MOST TWO TEMPORARY BACKUPS PER SERVER IN ANY SEVEN DAYS, says the specification. That
+     * is a limit on taking them, separate from how long one is kept.
      */
     public function takeBackup(int $serverId, TakeBackup $request): ?Action
     {
@@ -431,6 +434,9 @@ final class ServerActions extends Endpoint
      *
      * Each field left null keeps its current value. The hour is approximate - it schedules a
      * window, not a moment; see Entity\BackupWindow.
+     *
+     * ALL THREE ARE AUSTRALIA/SYDNEY TIME, IN EVERY REGION - a server in any other region
+     * included. Hour 2 is 02:00 in Sydney, and the day boundaries are Sydney's too.
      *
      * @param  int|null  $dayOfWeek  0 is Sunday
      */
@@ -653,7 +659,7 @@ final class ServerActions extends Endpoint
      * Set the server's IPv6 reverse nameservers.
      *
      * A REPLACEMENT: the list given is the list the server ends up with, so an empty array
-     * clears them.
+     * clears them. A list naming the same nameserver twice is rejected.
      *
      * @param  list<string>  $nameservers
      */

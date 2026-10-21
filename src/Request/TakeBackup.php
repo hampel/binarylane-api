@@ -22,7 +22,9 @@ use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
  *     TakeBackup::intoFreeSlot(BackupSlot::Temporary)->withLabel('before the upgrade');
  *
  * A TEMPORARY BACKUP IS KEPT FOR AT MOST SEVEN DAYS, which makes it the right slot for
- * "before I do something risky" and the wrong one for anything that has to survive.
+ * "before I do something risky" and the wrong one for anything that has to survive. And at
+ * most two may be taken of a server in any seven-day period - the specification states that
+ * on the `take_backup` action, and does not say whether a Resize's pre-action backup counts.
  */
 final class TakeBackup implements \JsonSerializable
 {

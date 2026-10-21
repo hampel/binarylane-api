@@ -13,6 +13,9 @@ use Hampel\BinaryLane\Api\Support\Cast;
  * moment. See BackupWindow, which is the concrete "next one is expected between these two
  * times".
  *
+ * ALL THREE ARE AUSTRALIA/SYDNEY TIME, whatever region the server is in - the hour, and the
+ * calendar day the week and month days fall on.
+ *
  * SUNDAY IS 0 in `backupDayOfWeek`, matching PHP's `w` format rather than ISO-8601's
  * Monday-is-1. dayOfWeekName() spells it out so nothing has to remember which convention
  * this is.

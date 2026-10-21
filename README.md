@@ -216,6 +216,9 @@ Read `selectedSizeOptions` rather than `size` for what a server actually has. Th
 catalogue entry it was created from; the two disagree on any server that has ever been given
 extra memory, disk, transfer or addresses.
 
+Units are BinaryLane's: memory in MB of 1024² bytes, disk in GB of 1024³, and transfer in TB of
+1000 such GB. Sample rates are KB of 1024 bytes per second.
+
 A server can legitimately have no public address at all — declining IPv4 is a discounted
 option, and a VPC-only server may have nothing routable.
 

@@ -64,7 +64,8 @@ final class ReverseNames extends Endpoint
      * Replace the whole set of nameservers.
      *
      * AN EMPTY LIST REMOVES THEM ALL, which returns every IPv6-enabled server on the account to
-     * having no PTR delegation.
+     * having no PTR delegation. A list naming the same nameserver twice is rejected; add()
+     * drops duplicates before it gets here.
      *
      * @param  list<string>  $nameservers
      * @return list<string>  what the account has afterwards
