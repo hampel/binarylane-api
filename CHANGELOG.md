@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0 (2026-10-23)
+
+The public API is stable, and follows semantic versioning from this release. No changes from
+0.6.1.
+
 ## 0.6.1 (2026-10-23)
 
 Read against BinaryLane's specification 0.45.0.
