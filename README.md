@@ -305,6 +305,8 @@ Zones are addressed by name. Names are normalised on the way in — lower-cased,
 stripped of a trailing dot.
 
 ```php
+use Hampel\BinaryLane\Api\Entity\DomainRecord;
+
 $records = $binarylane->domains()->records('example.com');
 
 $records->create(DomainRecord::a('www', '203.0.113.10'));
@@ -389,6 +391,7 @@ Every endpoint is an `Endpoint` subclass, and `Client::endpoint()` will construc
 
 ```php
 use Hampel\BinaryLane\Api\Endpoint\Endpoint;
+use Hampel\BinaryLane\Api\Entity\Server;
 
 final class Fleet extends Endpoint
 {
