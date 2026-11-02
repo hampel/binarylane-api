@@ -782,6 +782,12 @@ final class ServerActions extends Endpoint
      * order they are evaluated in. An empty list removes every rule, which on a server relying
      * on them is a change worth being deliberate about.
      *
+     * AT MOST 100 RULES, MATCHING AT MOST 1000 COMBINATIONS between them of source address,
+     * destination address, protocol and destination port. An address in CIDR notation or a
+     * port range counts as one; a rule for the `all` protocol counts its ports for both TCP and
+     * UDP; an ICMP rule counts each ICMP type it covers. A server already over either limit
+     * may keep, edit or remove its rules, but not exceed what it already has.
+     *
      * @param  list<AdvancedFirewallRule>  $rules
      */
     public function changeAdvancedFirewallRules(int $serverId, array $rules): ?Action
