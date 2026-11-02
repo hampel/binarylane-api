@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.1 (2026-11-02)
 
 Read against BinaryLane's specification 0.47.0.
 
