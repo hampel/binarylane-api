@@ -147,6 +147,10 @@ final class Domains extends Endpoint
      * changing delegation at a registrar, when the domain still reports the old nameservers
      * here.
      *
+     * SEND ONE REFRESH AT A TIME. A refresh sent while another is still in progress may be
+     * refused with a 429, raised as TooManyRequestsException. Several domains go in one call
+     * rather than one call each.
+     *
      * @param  list<string>  $names
      */
     public function refreshNameserverCache(array $names): void
