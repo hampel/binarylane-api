@@ -892,7 +892,8 @@ final class ServerActions extends Endpoint
      * the same and getting it wrong means proceeding without the backup you thought you had.
      * Raises rather than returning if the backup did not complete.
      *
-     * A temporary backup is kept for at most seven days.
+     * A temporary backup is kept for at most 48 hours, so it is a safety net for a change
+     * that is checked within two days, not for longer.
      *
      * @param  callable(Action): void|null  $onPoll  for a progress display - see Actions::await()
      * @param  callable(int): void|null  $wait  how to wait; defaults to sleep()

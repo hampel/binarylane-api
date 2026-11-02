@@ -23,7 +23,7 @@ enum BackupSlot: string
     /** Scheduled monthly. */
     case Monthly = 'monthly';
 
-    /** Taken on demand, kept for at most seven days. */
+    /** Taken on demand, kept for at most 48 hours - seven days for an uploaded .iso image. */
     case Temporary = 'temporary';
 
     /**

@@ -28,6 +28,9 @@ use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
  *
  * ONLY HTTP AND HTTPS SOURCES ARE SUPPORTED, and the URL must be reachable by BinaryLane
  * rather than by you.
+ *
+ * An uploaded .iso image in the temporary slot is kept for seven days; any other temporary
+ * backup is kept for 48 hours.
  */
 final class UploadImage implements \JsonSerializable
 {
