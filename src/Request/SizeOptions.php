@@ -188,11 +188,16 @@ final class SizeOptions implements \JsonSerializable
      * where it does, Entity\SizeOptions::allowsDisk() is the rule instead and validateAgainst()
      * applies it.
      *
-     * Called by validateAgainst(). Separate so it can be used without a fetched Size, and so
-     * it can be skipped: the specification documents these for the resize request, and a
-     * create asking for something between the steps is refused here rather than by the API.
+     * A SIZE'S OWN DISK VALUE IS ALWAYS VALID, whether or not it falls on a step - the
+     * specification says so. Pass the size and a disk equal to its own is not checked; without
+     * it, a size whose own disk is off the steps would be refused here and accepted by the API.
+     *
+     * Called by validateAgainst(), with the size. Separate so it can be used without a fetched
+     * Size, and so it can be skipped: the specification documents these for the resize
+     * request, and a create asking for something between the steps is refused here rather than
+     * by the API.
      */
-    public function validateGranularity(): self
+    public function validateGranularity(?Size $size = null): self
     {
         $memory = $this->options['memory'] ?? null;
 
@@ -224,7 +229,7 @@ final class SizeOptions implements \JsonSerializable
 
         $disk = $this->options['disk'] ?? null;
 
-        if (is_int($disk)) {
+        if (is_int($disk) && !self::isOwnDisk($disk, $size)) {
             $step = match (true) {
                 $disk > 200 => 100,
                 $disk > 60 => 10,
@@ -300,7 +305,7 @@ final class SizeOptions implements \JsonSerializable
      */
     public function validateAgainst(Size $size): self
     {
-        $this->validateGranularity();
+        $this->validateGranularity($size);
 
         $limits = $size->options;
 
@@ -308,7 +313,12 @@ final class SizeOptions implements \JsonSerializable
             return $this;
         }
 
-        if (isset($this->options['disk']) && is_int($this->options['disk']) && !$limits->allowsDisk($this->options['disk'])) {
+        if (
+            isset($this->options['disk'])
+            && is_int($this->options['disk'])
+            && !self::isOwnDisk($this->options['disk'], $size)
+            && !$limits->allowsDisk($this->options['disk'])
+        ) {
             throw new InvalidArgumentException(sprintf(
                 'The size "%s" %s; %d GB was asked for.',
                 $size->slug,
@@ -403,5 +413,13 @@ final class SizeOptions implements \JsonSerializable
     private function with(string $key, mixed $value): self
     {
         return new self([...$this->options, $key => $value]);
+    }
+
+    /**
+     * Whether a disk value is the size's own, which the specification says is always valid.
+     */
+    private static function isOwnDisk(int $disk, ?Size $size): bool
+    {
+        return $size !== null && $disk === $size->disk;
     }
 }
