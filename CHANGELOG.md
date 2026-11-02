@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+Read against BinaryLane's specification 0.47.0.
+
+- `SizeOptions::validateGranularity()` and `validateAgainst()` accept a size's own disk value;
+  `validateGranularity()` takes an optional `Size`
+- temporary backups are documented as kept for 48 hours, or seven days for an uploaded .iso
+  image
+- `Domains::refreshNameserverCache()` documents that a refresh sent while another is in
+  progress may raise `TooManyRequestsException`
+- `ServerActions::changeAdvancedFirewallRules()` documents the limits of 100 rules and 1000
+  combinations
+
 ## 1.0.0 (2026-10-23)
 
 The public API is stable, and follows semantic versioning from this release. No changes from
