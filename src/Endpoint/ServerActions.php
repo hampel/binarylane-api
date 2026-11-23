@@ -283,8 +283,11 @@ final class ServerActions extends Endpoint
      * Change the plan, the options, the image or the licences.
      *
      * MAY BE DESTRUCTIVE AND WILL NOT ASK. An image change rebuilds the server; reducing a
-     * retained backup count deletes those backups. Request\Resize::hazards() spells out what
-     * a particular request would do, and withPreActionBackup() is the only safety net on offer.
+     * retained backup count deletes those backups; and reducing the storage of a single-disk
+     * BYO server below the size of its disk, without a new image, truncates the disk without
+     * resizing its partitions or filesystem. Request\Resize::hazards() spells out what a
+     * particular request would do - except the BYO case, which nothing in a response
+     * identifies - and withPreActionBackup() is the only safety net on offer.
      */
     public function resize(int $serverId, ResizeRequest $request): ?Action
     {

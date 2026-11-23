@@ -129,12 +129,17 @@ final class Resize implements \JsonSerializable
     }
 
     /**
-     * Whether this request carries either of the two documented hazards.
+     * Whether this request carries either of the two hazards that can be seen from here.
      *
      * True when an image change is included - which rebuilds the server - or when the options
      * reduce a retained backup count below what the server currently has, which deletes the
      * difference. The second needs the server to compare against; without one, only the image
      * change can be seen.
+     *
+     * NOT THE THIRD. Reducing the storage of a single-disk BYO server below the size of its
+     * disk, without a new image, truncates the disk without resizing its partitions or
+     * filesystem. Nothing in the API's description of a server says it is BYO, so a false
+     * here does not clear that case.
      */
     public function isDestructive(?Server $current = null): bool
     {
@@ -166,6 +171,9 @@ final class Resize implements \JsonSerializable
 
     /**
      * What this request would destroy, in words - for a confirmation prompt.
+     *
+     * The same two hazards as isDestructive(), and the same blind spot: a storage reduction on
+     * a BYO server is not listed.
      *
      * @return list<string>
      */

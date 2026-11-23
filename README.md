@@ -271,10 +271,13 @@ Four of them destroy data with no confirmation, in BinaryLane's own words:
 
 - `rebuild()` and `restore()` discard the server's disks;
 - `cloneUsingBackup()` is addressed to the **source** server and overwrites the **target**;
-- `resize()` when it carries an image change, or reduces a retained backup count.
+- `resize()` when it carries an image change, reduces a retained backup count, or reduces the
+  storage of a single-disk BYO server below the size of its disk.
 
 That last one is the quiet one — reducing `weeklyBackups` to 0 deletes every weekly backup the
-server has. `Request\Resize` will tell you what a particular request would do:
+server has, and a BYO disk is truncated without its partitions or filesystem being resized.
+`Request\Resize` will tell you what a particular request would do, except for the BYO case:
+nothing in a server's description says it is BYO.
 
 ```php
 use Hampel\BinaryLane\Api\Request\Resize;
