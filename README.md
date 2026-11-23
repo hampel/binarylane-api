@@ -93,6 +93,11 @@ an action stops without completing:
 
 A `while ($action->status !== 'completed')` loop never escapes the middle two.
 
+**The action you get back may not be one your call started.** Repeating an action while the
+same one is still running on the same server answers with the running one: measured for
+`uptime`, where a second request returned the first action's id. Two processes can then be
+waiting on one action.
+
 **Do not read `reason` as an explanation.** It narrates what was being attempted and reads the
 same whether the action worked or not — an errored `uptime` action carries *"Your server uptime
 is being checked"*. `Action::failureReason()` reads `error_message` instead, which the

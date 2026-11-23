@@ -39,6 +39,12 @@ use Hampel\BinaryLane\Api\Request\ThresholdAlert;
  * resize() when it carries an image change, reduces a backup count or shrinks a BYO server's
  * storage below its disk. Each is marked below.
  *
+ * A REPEATED ACTION MAY ANSWER WITH THE ONE ALREADY RUNNING. Measured on 2026-11-23: a
+ * second `uptime` sent while the first was in progress came back with the FIRST action's id,
+ * and one sent after it finished started a new action. So the Action returned is not
+ * necessarily one this call started, and two callers can end up waiting on the same id. Seen
+ * for `uptime` only, same type on the same server; nothing says which other actions do it.
+ *
  * A SERVER UNDER MAINTENANCE REFUSES MOST OF THESE, and so does one still building. Both come
  * back as a 400 about the request rather than about the server; `Server::isActionable()` is
  * the check that costs nothing.
