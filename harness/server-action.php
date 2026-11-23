@@ -26,6 +26,11 @@
  *      empty string rather than null, which is why `hasResult()` exists.
  *   3. How long does an action of this kind take, and is `progress` populated while it runs?
  *      The polling defaults in Actions were chosen without a measurement.
+ *   4. Does repeating an action return the one already running? Seen once, on 2026-11-23, by
+ *      a consumer: a second `uptime` sent while the first was in progress answered with the
+ *      FIRST action's id. Step 3 sends two back to back without waiting, then a third after
+ *      both have finished, and compares the ids. Same type, same server, uptime only - it
+ *      says nothing about other action types.
  *
  * Needs BINARYLANE_API_TOKEN and BINARYLANE_SERVER_ID.
  *
@@ -181,6 +186,51 @@ try {
         $io->line();
         $io->info('it was already finished on the first poll, so the polling interval was never');
         $io->info('exercised. A longer action would be needed to measure it.');
+    }
+
+    $io->line();
+    $io->info('3. repeating it: two uptime actions back to back, then one after both finish');
+
+    $first = $binarylane->serverActions()->uptime($serverId);
+    $second = $binarylane->serverActions()->uptime($serverId);
+
+    $io->values([
+        'first' => $first?->describe() ?? '(202, no body)',
+        'second, at once' => $second?->describe() ?? '(202, no body)',
+    ]);
+
+    foreach ([$first, $second] as $sent) {
+        if ($sent !== null) {
+            try {
+                $binarylane->actions()->await($sent, timeout: 120, interval: 2);
+            } catch (ActionFailedException) {
+                // finished either way, which is all the third request needs
+            }
+        }
+    }
+
+    $third = $binarylane->serverActions()->uptime($serverId);
+
+    $io->values([
+        'third, after both' => $third?->describe() ?? '(202, no body)',
+    ]);
+
+    $io->line();
+
+    if ($first !== null && $second !== null) {
+        $io->line($first->id === $second->id
+            ? 'REUSED: the second request answered with the first action, still running'
+            : 'NOT reused: the second request started an action of its own');
+    }
+
+    if ($first !== null && $third !== null) {
+        $io->line($first->id === $third->id
+            ? 'REUSED after finishing: the third request answered with the first action'
+            : 'a request after the first finished started a new action');
+    }
+
+    if ($third !== null && !$third->isFinished()) {
+        $binarylane->actions()->await($third, timeout: 120, interval: 2);
     }
 } catch (ActionFailedException $e) {
     $io->line();
