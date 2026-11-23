@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 (2026-11-24)
+
+- `ServerActions` and the README document that repeating an action while the same one is still
+  running on the same server may answer with the running action rather than a new one; measured
+  for `uptime`
+- `ServerActions` lists `resizeDisk()` among the operations that destroy data
+
 ## 1.0.2 (2026-11-24)
 
 Read against BinaryLane's specification 0.48.0.
