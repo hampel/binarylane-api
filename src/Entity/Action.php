@@ -53,6 +53,9 @@ final class Action implements \JsonSerializable
      * @param  string  $type  the action's own name - `power_on`, `rebuild`, `take_backup`.
      *                        A plain string rather than an enum because the API adds actions
      *                        and an unknown one must not become null here
+     * @param  \DateTimeImmutable|null  $startedAt  when the action was CREATED, despite the
+     *                                             name - which is earlier than processing
+     *                                             began for an action that was queued
      * @param  array<string, mixed>  $raw
      */
     public function __construct(
@@ -196,7 +199,11 @@ final class Action implements \JsonSerializable
     }
 
     /**
-     * How long the action took, or has taken so far.
+     * How long since the action was created, to its completion or to now.
+     *
+     * INCLUDES ANY TIME SPENT QUEUED. `started_at` is when the action was created, not when
+     * processing began, and the API reports no separate start - so for an action that waited
+     * on another this is the wait plus the work, not the work alone.
      *
      * Null when the API did not send a `started_at` that could be parsed. A running action
      * measures against now, which is why this is a method rather than a property.
