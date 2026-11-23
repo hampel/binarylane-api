@@ -33,9 +33,11 @@ use Hampel\BinaryLane\Api\Request\ThresholdAlert;
  * action to await: the methods return `?Action`, null means "accepted, nothing to follow",
  * and `Servers::actions($id)` is where to look for what it started.
  *
- * FOUR OF THESE DESTROY DATA WITH NO CONFIRMATION, in BinaryLane's own words - rebuild(),
- * restore(), cloneUsingBackup() (on the TARGET, not the server the call is addressed to) and
- * resize() when it carries an image change or reduces a backup count. Each is marked below.
+ * FIVE OF THESE DESTROY DATA WITH NO CONFIRMATION, in BinaryLane's own words - rebuild(),
+ * restore(), cloneUsingBackup() (on the TARGET, not the server the call is addressed to),
+ * resizeDisk() when it shrinks a disk whose filesystem BinaryLane does not manage, and
+ * resize() when it carries an image change, reduces a backup count or shrinks a BYO server's
+ * storage below its disk. Each is marked below.
  *
  * A SERVER UNDER MAINTENANCE REFUSES MOST OF THESE, and so does one still building. Both come
  * back as a 400 about the request rather than about the server; `Server::isActionable()` is
