@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+Read against BinaryLane's specification 0.48.0.
+
+- added `Action::$queued` and `Action::isQueued()`; a queued action is in progress, not blocked,
+  and `Actions::await()` keeps polling it
+- `ActionTimedOutException`'s message says when the action was still queued
+- `Action::$startedAt` is documented as when the action was created, so `duration()` includes
+  time spent queued
+- `ServerActions::resize()` documents that reducing the storage of a single-disk BYO server
+  below its disk size truncates the disk; `Resize::isDestructive()` and `hazards()` cannot
+  detect it
+- `ServerActions::resizeDisk()` documents that it accepts the primary disk, and that shrinking
+  an additional disk or a BYO server's primary disk truncates it
+
 ## 1.0.1 (2026-11-02)
 
 Read against BinaryLane's specification 0.47.0.
