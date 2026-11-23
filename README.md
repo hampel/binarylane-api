@@ -267,10 +267,12 @@ $binarylane->serverActions()->changeKernel(1234, 7);
 $binarylane->serverActions()->addDisk(1234, 50, 'Data');
 ```
 
-Four of them destroy data with no confirmation, in BinaryLane's own words:
+Five of them destroy data with no confirmation, in BinaryLane's own words:
 
 - `rebuild()` and `restore()` discard the server's disks;
 - `cloneUsingBackup()` is addressed to the **source** server and overwrites the **target**;
+- `resizeDisk()` when it shrinks an additional disk, or a BYO server's primary disk, without
+  its partitions and filesystems having been reduced first;
 - `resize()` when it carries an image change, reduces a retained backup count, or reduces the
   storage of a single-disk BYO server below the size of its disk.
 

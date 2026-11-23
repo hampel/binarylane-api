@@ -10,9 +10,13 @@ use Hampel\BinaryLane\Api\Support\Cast;
  * One virtual disk attached to a server.
  *
  * THE PRIMARY DISK IS NOT LIKE THE OTHERS. It is the one the operating system is installed
- * on, it cannot be deleted, and its size is governed by the server's SIZE rather than by the
- * disk actions - resizing it means resizing the server. `ResizeDisk` and `DeleteDisk` are for
- * the additional disks, and asking them to touch the primary is a 400.
+ * on, and `DeleteDisk` is for the additional disks only. `ResizeDisk` takes any disk, the
+ * primary included, but only moves space between disks and unallocated storage; the server's
+ * total storage is changed by a resize of the server.
+ *
+ * SHRINKING A DISK CAN DESTROY DATA. BinaryLane resizes the filesystem only on a disk whose
+ * filesystem it manages; an additional disk, or the primary disk of a BYO server, is
+ * truncated as it stands. See ServerActions::resizeDisk().
  *
  * `sizeGigabytes` IS A FLOAT because BinaryLane reports fractional disk sizes; and a GB here
  * is 1024³ bytes, per the units table in the API's own introduction, not 10⁹.

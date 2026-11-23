@@ -237,7 +237,8 @@ final class Server implements \JsonSerializable
     }
 
     /**
-     * The primary disk, which the size governs and the disk actions may not touch.
+     * The primary disk - the one the operating system is installed on, which DeleteDisk
+     * cannot remove.
      */
     public function primaryDisk(): ?Disk
     {
@@ -251,7 +252,8 @@ final class Server implements \JsonSerializable
     }
 
     /**
-     * The disks that ResizeDisk and DeleteDisk can act on.
+     * The disks other than the primary: the ones DeleteDisk can remove. ResizeDisk takes
+     * these and the primary alike.
      *
      * @return list<Disk>
      */

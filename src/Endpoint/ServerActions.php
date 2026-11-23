@@ -602,10 +602,16 @@ final class ServerActions extends Endpoint
     }
 
     /**
-     * Resize one of the server's additional disks.
+     * Resize one of the server's disks, the primary included, within its existing storage.
      *
-     * NOT THE PRIMARY DISK - that one follows the server's size. Entity\Disk::isAdditional()
-     * says which is which.
+     * Space moves between the disk and the server's unallocated storage; the total does not
+     * change - resize() does that. Growing a disk needs enough unallocated space.
+     *
+     * SHRINKING A DISK MAY BE DESTRUCTIVE AND WILL NOT ASK. On a disk whose filesystem
+     * BinaryLane does not manage - any additional disk, or the primary disk of a BYO server -
+     * the disk is truncated without its partitions or filesystems being resized, so they must
+     * be reduced to fit first. Entity\Disk::isAdditional() says which disks are additional;
+     * nothing in a response says whether a server is BYO.
      */
     public function resizeDisk(int $serverId, int $diskId, int $sizeGigabytes): ?Action
     {
