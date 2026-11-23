@@ -13,7 +13,8 @@ use Hampel\BinaryLane\Api\Entity\Action;
  * to wait, not about the work - the resize or the rebuild carries on, and asking again later
  * will find it finished. There is no way to cancel an action through the API.
  *
- * The action as last seen is attached, so `progress` says how far it had got.
+ * The action as last seen is attached, so `progress` says how far it had got. An action that
+ * was still `queued` had not started at all, and the message says so.
  */
 final class ActionTimedOutException extends ActionException
 {
@@ -22,11 +23,13 @@ final class ActionTimedOutException extends ActionException
         return new self(
             sprintf(
                 'Gave up waiting for the BinaryLane action #%d (%s) after %d seconds between polls; it is '
-                    . 'still running (%d%% complete) and has not been cancelled.',
+                    . '%s and has not been cancelled.',
                 $action->id,
                 $action->type !== '' ? $action->type : $action->title,
                 $seconds,
-                $action->progress->percentComplete ?? 0
+                $action->isQueued()
+                    ? 'still queued, deferred or waiting on another action'
+                    : sprintf('still running (%d%% complete)', $action->progress->percentComplete ?? 0)
             ),
             $action
         );

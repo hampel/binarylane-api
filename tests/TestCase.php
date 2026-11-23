@@ -144,6 +144,7 @@ abstract class TestCase extends BaseTestCase
             'region_slug' => 'syd',
             'title' => 'Power On',
             'reason' => 'Requested by user',
+            'queued' => false,
             'progress' => [
                 'percent_complete' => $status === 'in-progress' ? 50 : 100,
                 'current_step' => $status === 'in-progress' ? 'Starting server' : null,

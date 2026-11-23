@@ -332,6 +332,54 @@ final class ActionsTest extends TestCase
         }
     }
 
+    /**
+     * A queued action is in-progress and will move on its own, so it is polled like any other -
+     * not raised as blocked - and a timeout reached while it waits says it never started.
+     */
+    public function testAQueuedActionIsPolledAndNotTreatedAsBlocked(): void
+    {
+        $this->client->pushJson(200, $this->action(7, 'in-progress', ['queued' => true]));
+        $this->client->pushJson(200, $this->action(7, 'completed', ['queued' => false]));
+
+        $waited = [];
+        $action = $this->binarylane()->actions()->await(7, interval: 4, wait: $this->recordingWait($waited));
+
+        $this->assertTrue($action->isSuccessful());
+        $this->assertFalse($action->isQueued());
+        $this->assertSame([4], $waited);
+    }
+
+    public function testATimeoutWhileQueuedSaysTheActionHadNotStarted(): void
+    {
+        $this->client->pushJson(200, $this->action(7, 'in-progress', ['queued' => true]));
+
+        try {
+            $this->binarylane()->actions()->await(7, timeout: 0);
+
+            $this->fail('expected an ActionTimedOutException');
+        } catch (ActionTimedOutException $e) {
+            $this->assertTrue($e->action->isQueued());
+            $this->assertFalse($e->action->isBlocked());
+            $this->assertStringContainsString('still queued', $e->getMessage());
+            $this->assertStringNotContainsString('% complete', $e->getMessage());
+        }
+    }
+
+    public function testQueuedIsReadAndNullWhenAbsent(): void
+    {
+        $this->client->pushJson(200, $this->action(7, 'in-progress', ['queued' => true]));
+        $queued = $this->binarylane()->actions()->get(7);
+
+        $this->assertTrue($queued->queued);
+        $this->assertTrue($queued->isRunning());
+        $this->assertSame('#7 Power On - in-progress - queued', $queued->describe());
+
+        $absent = Action::fromArray(['id' => 7, 'status' => 'in-progress']);
+
+        $this->assertNull($absent->queued);
+        $this->assertFalse($absent->isQueued());
+    }
+
     public function testATimeoutOfZeroChecksOnceAndDoesNotWait(): void
     {
         $this->client->pushJson(200, $this->action(7, 'in-progress'));

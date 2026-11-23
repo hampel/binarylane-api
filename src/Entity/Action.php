@@ -25,6 +25,11 @@ use Hampel\BinaryLane\Api\Support\Cast;
  *  - `blockingInvoiceId` is not null. Held up by an invoice that needs paying. Also still
  *    `in-progress`, and also indefinitely.
  *
+ * `queued` IS NOT A STALL. It is true while BinaryLane has deferred the action or it waits on
+ * another action, with the status `in-progress` throughout; it moves on its own, so await()
+ * keeps polling. A long queue can still outlast a timeout, which is why the timeout says so.
+ * Null when the response did not carry the field.
+ *
  * `resultData` IS WHERE AN ANSWER COMES BACK when the action was really a question - the
  * uptime action puts the uptime there, `is_running` puts the answer there. It is a string
  * whatever the action, so a caller reading it knows what shape to expect from what it asked.
@@ -68,6 +73,7 @@ final class Action implements \JsonSerializable
         public readonly ?UserInteractionRequired $userInteractionRequired = null,
         public readonly ?string $errorMessage = null,
         public readonly array $raw = [],
+        public readonly ?bool $queued = null,
     ) {
     }
 
@@ -94,6 +100,7 @@ final class Action implements \JsonSerializable
             Cast::nested($row['user_interaction_required'] ?? null, UserInteractionRequired::fromArray(...)),
             Cast::string($row['error_message'] ?? null),
             $row,
+            Cast::bool($row['queued'] ?? null),
         );
     }
 
@@ -127,6 +134,15 @@ final class Action implements \JsonSerializable
     public function isRunning(): bool
     {
         return ($this->status?->isRunning() ?? false) && !$this->isBlocked();
+    }
+
+    /**
+     * Whether BinaryLane has deferred the action, or it is waiting on another action. It will
+     * start on its own; this is not a block.
+     */
+    public function isQueued(): bool
+    {
+        return $this->queued === true && !$this->isFinished();
     }
 
     /**
@@ -210,6 +226,8 @@ final class Action implements \JsonSerializable
             $parts[] = 'waiting on: ' . ($this->userInteractionRequired?->question() ?? '');
         } elseif ($this->isBlockedByInvoice()) {
             $parts[] = sprintf('blocked by invoice %d', (int) $this->blockingInvoiceId);
+        } elseif ($this->isQueued()) {
+            $parts[] = 'queued';
         } elseif ($this->reason !== '') {
             $parts[] = $this->reason;
         }
@@ -238,6 +256,7 @@ final class Action implements \JsonSerializable
             'blocking_invoice_id' => $this->blockingInvoiceId,
             'user_interaction_required' => $this->userInteractionRequired,
             'error_message' => $this->errorMessage,
+            'queued' => $this->queued,
         ];
     }
 }
